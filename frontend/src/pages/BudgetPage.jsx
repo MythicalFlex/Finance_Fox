@@ -419,6 +419,7 @@ const BudgetPage = () => {
             <h4 className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-3 px-2">Tools</h4>
             <div className="space-y-1">
               <SidebarItem dotColor="bg-gray-200" label="Calculators" onClick={() => navigate('/calculators')} />
+              <SidebarItem dotColor="bg-gray-200" label="EMI Tracker" onClick={() => navigate('/emitracker')} />
             </div>
           </div>
         </div>
@@ -615,7 +616,7 @@ const BudgetPage = () => {
                       <div key={template.id} className="border border-gray-100 bg-gray-50 p-4 rounded-xl hover:border-primary/30 transition-colors group relative shadow-sm">
                         <div className="flex flex-col">
                           <span className="font-bold text-darkNavy text-sm pr-6 truncate">{template.name}</span>
-                          <span className="text-xs text-textMuted mt-0.5">{template.categories.length} categories • ₹{template.income?.toLocaleString() || 0} income</span>
+                          <span className="text-xs text-textMuted mt-0.5">{(template.categories || []).length} categories • ₹{template.income?.toLocaleString() || 0} income</span>
                         </div>
                         <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-200">
                           <button 

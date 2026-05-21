@@ -1,40 +1,40 @@
 {
-  "id": 1779273704156,
-  "name": "Lifestyle 3",
+  "id": 1779358527509,
+  "name": "Template 5",
   "income": 150000,
   "categories": [
     {
       "id": 1,
       "name": "Living Costs",
-      "percentage": 26.666666666666668,
+      "percentage": 26.6,
       "color": "#f97316",
       "icon": "Home"
     },
     {
       "id": 2,
       "name": "Personal Expenses",
-      "percentage": 13.333333333333334,
+      "percentage": 13.54,
       "color": "#3b82f6",
       "icon": "Heart"
     },
     {
       "id": 3,
       "name": "Savings",
-      "percentage": 16.666666666666664,
+      "percentage": 16.6,
       "color": "#22c55e",
       "icon": "Briefcase"
     },
     {
       "id": 4,
       "name": "Investments",
-      "percentage": 6.666666666666667,
+      "percentage": 6.6,
       "color": "#eab308",
       "icon": "TrendingUp"
     },
     {
       "id": 1779273288798,
       "name": "Dating",
-      "percentage": 6.666666666666667,
+      "percentage": 6.66,
       "color": "#a855f7",
       "icon": "IndianRupee"
     },

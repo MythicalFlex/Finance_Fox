@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   List, Bell, Calculator, IndianRupee, TrendingUp, PiggyBank, Percent,
-  ChevronDown, AlertCircle, CheckCircle2
+  ChevronDown, AlertCircle, CheckCircle2, Palmtree
 } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
@@ -497,6 +497,190 @@ const LumpsumCalculator = () => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 4. Retirement Corpus Calculator
+// ─────────────────────────────────────────────────────────────────────────────
+const RetirementCalculator = () => {
+  const [currentAge, setCurrentAge] = useState(30);
+  const [retireAge, setRetireAge] = useState(60);
+  const [lifeExpectancy, setLifeExpectancy] = useState(85);
+  const [expenses, setExpenses] = useState(50000);
+  const [savings, setSavings] = useState(500000);
+  const [preReturn, setPreReturn] = useState(12);
+  const [postReturn, setPostReturn] = useState(8);
+  const [inflation, setInflation] = useState(6);
+  const [adjustInflation, setAdjustInflation] = useState(true);
+
+  const yearsToRetire = Math.max(1, retireAge - currentAge);
+  const yearsInRetirement = Math.max(1, lifeExpectancy - retireAge);
+  
+  const inflationRate = adjustInflation ? inflation : 0;
+  
+  // 1. Inflated monthly expenses at retirement
+  const monthlyExpenseAtRetire = expenses * Math.pow(1 + inflationRate / 100, yearsToRetire);
+  
+  // 2. Calculate retirement corpus needed (backward simulation)
+  const computeCorpus = () => {
+    const rPostMonthly = postReturn / 100 / 12;
+    const totalMonths = yearsInRetirement * 12;
+    let balance = 0;
+    
+    // Work backwards from last month of life expectancy to start of retirement
+    for (let month = totalMonths; month >= 1; month--) {
+      const yearIndex = Math.floor((month - 1) / 12);
+      // Expenses inflate each year post-retirement
+      const expenseThisMonth = monthlyExpenseAtRetire * Math.pow(1 + inflationRate / 100, yearIndex);
+      
+      balance = balance / (1 + rPostMonthly) + expenseThisMonth;
+    }
+    return balance;
+  };
+  
+  const targetCorpus = computeCorpus();
+  
+  // 3. Growth of existing savings until retirement
+  const preReturnMonthly = preReturn / 100 / 12;
+  const preRetireMonths = yearsToRetire * 12;
+  const fvExistingSavings = savings * Math.pow(1 + preReturnMonthly, preRetireMonths);
+  
+  // 4. Remaining corpus to build and required monthly SIP
+  const additionalCorpusNeeded = Math.max(0, targetCorpus - fvExistingSavings);
+  
+  let requiredSIP = 0;
+  if (additionalCorpusNeeded > 0) {
+    const rateFactor = Math.pow(1 + preReturnMonthly, preRetireMonths) - 1;
+    if (rateFactor > 0) {
+      requiredSIP = (additionalCorpusNeeded * preReturnMonthly) / (rateFactor * (1 + preReturnMonthly));
+    } else {
+      requiredSIP = additionalCorpusNeeded / preRetireMonths;
+    }
+  }
+
+  const safe = (n) => (isNaN(n) || !isFinite(n) ? 0 : n);
+
+  return (
+    <div className="bg-white rounded-2xl border border-borderLight shadow-sm">
+      <div className="p-6 border-b border-borderLight flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+          <Palmtree size={20} />
+        </div>
+        <div>
+          <h3 className="font-bold text-darkNavy">Retirement Corpus Calculator</h3>
+          <p className="text-xs text-textMuted">Estimate the corpus required for your golden years with inflation protection</p>
+        </div>
+      </div>
+
+      <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Inputs */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3">
+            <CalcInput label="Current Age" value={currentAge} onChange={v => setCurrentAge(+v)} suffix="Yrs" min="1" />
+            <CalcInput label="Retirement Age" value={retireAge} onChange={v => setRetireAge(+v)} suffix="Yrs" min={currentAge + 1} />
+            <CalcInput label="Life Expectancy" value={lifeExpectancy} onChange={v => setLifeExpectancy(+v)} suffix="Yrs" min={retireAge + 1} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <CalcInput label="Current Monthly Expense" value={expenses} onChange={v => setExpenses(+v)} prefix="₹" min="100" />
+            <CalcInput label="Existing Savings" value={savings} onChange={v => setSavings(+v)} prefix="₹" min="0" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <CalcInput label="Pre-Retire Return" value={preReturn} onChange={v => setPreReturn(+v)} suffix="%" min="0" step="0.1" />
+            <CalcInput label="Post-Retire Return" value={postReturn} onChange={v => setPostReturn(+v)} suffix="%" min="0" step="0.1" />
+            <div>
+              <label className="block text-xs font-bold text-textMuted uppercase tracking-wider mb-1">
+                Inflation Rate
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type="number"
+                  disabled={!adjustInflation}
+                  value={inflation}
+                  min="0"
+                  step="0.5"
+                  onChange={e => setInflation(+e.target.value)}
+                  onWheel={e => e.target.blur()}
+                  className={`w-full border rounded-xl py-2.5 pl-4 pr-8 text-sm font-bold transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${adjustInflation ? 'bg-orange-50 border-orange-200 text-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400' : 'bg-gray-100 border-gray-200 text-gray-400'}`}
+                />
+                <span className={`absolute right-3 font-bold text-sm pointer-events-none ${adjustInflation ? 'text-orange-400' : 'text-gray-300'}`}>%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Inflation Toggle */}
+          <div className="flex items-center gap-2.5 bg-purple-50 border border-purple-100 rounded-xl px-4 py-3">
+            <input
+              type="checkbox"
+              id="adjustInflation"
+              checked={adjustInflation}
+              onChange={e => setAdjustInflation(e.target.checked)}
+              className="w-4 h-4 text-purple-600 border-purple-300 rounded focus:ring-purple-500 focus:ring-offset-0 cursor-pointer"
+            />
+            <label htmlFor="adjustInflation" className="text-xs font-bold text-darkNavy cursor-pointer select-none">
+              Adjust Expenses & Returns for Inflation
+            </label>
+          </div>
+        </div>
+
+        {/* Results */}
+        <div className="bg-darkNavy rounded-2xl p-5 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/20 rounded-full blur-2xl -mr-6 -mt-6 pointer-events-none" />
+
+          <div>
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Target Retirement Corpus</p>
+            <p className="text-3xl font-bold text-white">{fmt(safe(targetCorpus))}</p>
+          </div>
+
+          <div className="mt-4 border-t border-slate-700 pt-4 space-y-0">
+            <ResultRow 
+              label={`Monthly Expense at Retire${adjustInflation ? ' (Inflated)' : ''}`} 
+              value={fmt(safe(monthlyExpenseAtRetire))} 
+              dark 
+            />
+            <ResultRow 
+              label="FV of Existing Savings" 
+              value={fmt(safe(fvExistingSavings))} 
+              dark 
+            />
+            <ResultRow 
+              label="Additional Corpus Needed" 
+              value={fmt(safe(additionalCorpusNeeded))} 
+              dark 
+            />
+
+            <div className="flex justify-between items-center pt-2.5 border-t border-slate-700 mt-2.5">
+              <span className="text-xs text-gray-300 font-medium">Required Monthly Savings (SIP)</span>
+              <span className={`text-sm font-bold ${additionalCorpusNeeded > 0 ? 'text-purple-400' : 'text-green-400'}`}>
+                {additionalCorpusNeeded > 0 ? fmt(safe(requiredSIP)) : '₹0.00 (Fully Funded!)'}
+              </span>
+            </div>
+          </div>
+
+          {/* Stacked bar representing savings vs additional needed */}
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <span>FV Existing Savings</span>
+              <span>Additional Needed</span>
+            </div>
+            <div className="h-2 bg-slate-700 rounded-full overflow-hidden flex">
+              <div 
+                className="bg-green-400 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, safe(fvExistingSavings / targetCorpus) * 100)}%` }}
+              />
+              <div className="bg-purple-400 h-full flex-1" />
+            </div>
+            {adjustInflation && (
+              <div className="text-[10px] text-orange-300 font-semibold mt-2 text-center">
+                *Adjusted for {inflation}% inflation over {yearsToRetire} years.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Page
 // ─────────────────────────────────────────────────────────────────────────────
 const CalculatorsPage = () => {
@@ -547,6 +731,7 @@ const CalculatorsPage = () => {
             <h4 className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-3 px-2">Tools</h4>
             <div className="space-y-1">
               <SidebarItem dotColor="bg-primary" label="Calculators" active onClick={() => navigate('/calculators')} />
+              <SidebarItem dotColor="bg-gray-200" label="EMI Tracker" onClick={() => navigate('/emitracker')} />
             </div>
           </div>
         </div>
@@ -604,6 +789,7 @@ const CalculatorsPage = () => {
             <EMICalculator />
             <SIPCalculator />
             <LumpsumCalculator />
+            <RetirementCalculator />
           </div>
         </div>
       </main>

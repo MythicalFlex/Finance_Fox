@@ -58,7 +58,7 @@ app.get('/api/templates', (req, res) => {
   try {
     const files = fs.readdirSync(TEMPLATES_DIR);
     const templates = files
-      .filter(file => file.endsWith('.json'))
+      .filter(file => file.endsWith('.json') && file !== 'emis.json')
       .map(file => {
         const filePath = path.join(TEMPLATES_DIR, file);
         const data = fs.readFileSync(filePath, 'utf8');
@@ -103,6 +103,93 @@ app.delete('/api/templates/:id', (req, res) => {
   } catch (error) {
     console.error('Error deleting template:', error);
     res.status(500).json({ error: 'Failed to delete template' });
+  }
+});
+
+// EMIs subfolder setup
+const EMIS_DIR = path.join(TEMPLATES_DIR, 'emis');
+
+// Ensure EMIs folder exists
+if (!fs.existsSync(EMIS_DIR)) {
+  fs.mkdirSync(EMIS_DIR, { recursive: true });
+}
+
+// Automated Migration from old emis.json
+const oldEmisPath = path.join(TEMPLATES_DIR, 'emis.json');
+if (fs.existsSync(oldEmisPath)) {
+  try {
+    const data = fs.readFileSync(oldEmisPath, 'utf8');
+    const oldEmis = JSON.parse(data);
+    if (Array.isArray(oldEmis)) {
+      oldEmis.forEach(emi => {
+        if (emi && emi.id) {
+          const filePath = path.join(EMIS_DIR, `emi-${emi.id}.json`);
+          if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, JSON.stringify(emi, null, 2), 'utf8');
+          }
+        }
+      });
+    }
+    fs.unlinkSync(oldEmisPath);
+    console.log('Successfully migrated old emis.json to templates/emis/ folder');
+  } catch (err) {
+    console.error('Error migrating old emis.json:', err);
+  }
+}
+
+// GET all EMIs
+app.get('/api/emis', (req, res) => {
+  try {
+    if (!fs.existsSync(EMIS_DIR)) {
+      return res.json([]);
+    }
+    const files = fs.readdirSync(EMIS_DIR);
+    const emis = files
+      .filter(file => file.endsWith('.json'))
+      .map(file => {
+        const filePath = path.join(EMIS_DIR, file);
+        const data = fs.readFileSync(filePath, 'utf8');
+        return JSON.parse(data);
+      });
+    res.json(emis);
+  } catch (error) {
+    console.error('Error reading EMIs:', error);
+    res.status(500).json({ error: 'Failed to read EMIs' });
+  }
+});
+
+// POST save / update a single EMI in its own file
+app.post('/api/emis', (req, res) => {
+  try {
+    const emi = req.body;
+    if (!emi || !emi.id) {
+      return res.status(400).json({ error: 'Invalid EMI data' });
+    }
+    const fileName = `emi-${emi.id}.json`;
+    const filePath = path.join(EMIS_DIR, fileName);
+    fs.writeFileSync(filePath, JSON.stringify(emi, null, 2), 'utf8');
+    res.json({ message: 'EMI saved successfully', emi });
+  } catch (error) {
+    console.error('Error saving EMI:', error);
+    res.status(500).json({ error: 'Failed to save EMI' });
+  }
+});
+
+// DELETE a specific EMI file
+app.delete('/api/emis/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const fileName = `emi-${id}.json`;
+    const filePath = path.join(EMIS_DIR, fileName);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      res.json({ message: 'EMI deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'EMI file not found' });
+    }
+  } catch (error) {
+    console.error('Error deleting EMI:', error);
+    res.status(500).json({ error: 'Failed to delete EMI' });
   }
 });
 
