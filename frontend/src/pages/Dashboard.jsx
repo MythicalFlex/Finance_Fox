@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  List, 
-  PieChart, 
-  TrendingUp, 
-  Calculator, 
-  FileText, 
-  User, 
-  Settings, 
-  Bell, 
-  Plus, 
-  Coffee, 
-  Home as HomeIcon, 
-  ShoppingCart, 
-  Car, 
+import {
+  Home,
+  List,
+  PieChart,
+  TrendingUp,
+  Calculator,
+  FileText,
+  User,
+  Settings,
+  Bell,
+  Plus,
+  Coffee,
+  Home as HomeIcon,
+  ShoppingCart,
+  Car,
   Zap,
   MoreHorizontal
 } from 'lucide-react';
@@ -31,13 +31,13 @@ const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
 
 const Sparkline = ({ color, points }) => (
   <svg viewBox="0 0 100 30" className="w-full h-8 mt-4 overflow-visible">
-    <polyline 
-      fill="none" 
-      stroke={color} 
-      strokeWidth="2" 
-      points={points} 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
+    <polyline
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      points={points}
+      strokeLinecap="round"
+      strokeLinejoin="round"
     />
     <circle cx={points.split(' ').pop().split(',')[0]} cy={points.split(' ').pop().split(',')[1]} r="3" fill={color} />
   </svg>
@@ -47,10 +47,10 @@ const StatCard = ({ title, amount, subtitle, subValue, trendType, isDark, sparkl
   const isUp = trendType === 'success';
   const isWarning = trendType === 'warning';
   const isDanger = trendType === 'danger';
-  
+
   let badgeColor = 'bg-successLight text-success';
   let sparkColor = '#22c55e';
-  
+
   if (isDanger) {
     badgeColor = 'bg-dangerLight text-danger';
     sparkColor = '#ef4444';
@@ -143,7 +143,7 @@ const Dashboard = () => {
             <span className="text-darkNavy font-bold leading-tight">FOX</span>
           </div>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto py-6 px-4 no-scrollbar">
           <div className="mb-8">
             <h4 className="text-[10px] font-bold text-textMuted uppercase tracking-wider mb-3 px-2">Main</h4>
@@ -163,13 +163,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
-        <div className="p-4 mt-auto">
-          <button className="w-full flex items-center justify-between px-4 py-3 bg-darkNavy text-white rounded-xl hover:bg-slate-800 transition-colors">
-            <span className="text-sm font-semibold">Ask Fox AI</span>
-            <div className="w-2 h-2 rounded-full bg-primary" />
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -182,7 +175,7 @@ const Dashboard = () => {
             </button>
             <h1 className="text-lg text-textMuted font-medium border-l border-borderLight pl-4 ml-2">Dashboard</h1>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <button className="px-4 py-1.5 rounded-full border border-borderLight text-sm font-medium text-textDark hover:bg-gray-50 flex items-center gap-2 tabular-nums">
               <span>{now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -236,57 +229,57 @@ const Dashboard = () => {
 
           {/* Top Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-            <StatCard 
-              title="Net Balance" 
-              amount="₹14,200" 
-              subValue="↑ 8.2%" 
-              subtitle="vs Mar" 
-              trendType="success" 
+            <StatCard
+              title="Net Balance"
+              amount="₹14,200"
+              subValue="↑ 8.2%"
+              subtitle="vs Mar"
+              trendType="success"
               isDark={true}
               sparklinePoints="0,25 20,20 40,22 60,15 80,18 100,10"
             />
-            <StatCard 
-              title="Total Income" 
-              amount="₹60,000" 
-              subValue="Salary" 
-              subtitle="Apr 1" 
-              trendType="success" 
+            <StatCard
+              title="Total Income"
+              amount="₹60,000"
+              subValue="Salary"
+              subtitle="Apr 1"
+              trendType="success"
               sparklinePoints="0,20 30,20 30,10 100,10"
             />
-            <StatCard 
-              title="Total Expenses" 
-              amount="₹45,800" 
-              subValue="↑ 3.4%" 
-              subtitle="vs Mar" 
-              trendType="danger" 
+            <StatCard
+              title="Total Expenses"
+              amount="₹45,800"
+              subValue="↑ 3.4%"
+              subtitle="vs Mar"
+              trendType="danger"
               sparklinePoints="0,15 20,18 40,12 60,20 80,15 100,25"
             />
-            <StatCard 
-              title="Savings" 
-              amount="₹12,000" 
-              subValue="20% rate" 
-              subtitle="on target" 
-              trendType="warning" 
+            <StatCard
+              title="Savings"
+              amount="₹12,000"
+              subValue="20% rate"
+              subtitle="on target"
+              trendType="warning"
               sparklinePoints="0,25 20,22 40,25 60,18 80,15 100,15"
             />
           </div>
 
           {/* Middle Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-            
+
             {/* Budget Overview */}
             <div className="bg-white p-5 rounded-2xl border border-borderLight shadow-sm flex flex-col">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold">Budget overview</h3>
                 <button className="text-sm text-blue-500 hover:underline">Edit split</button>
               </div>
-              
+
               <div className="flex gap-2 mb-6">
                 <span className="px-3 py-1 bg-orange-100 text-primary text-xs font-semibold rounded-full">Needs 50%</span>
                 <span className="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-semibold rounded-full">Wants 30%</span>
                 <span className="px-3 py-1 bg-green-100 text-success text-xs font-semibold rounded-full">Savings 20%</span>
               </div>
-              
+
               <div className="flex justify-end gap-6 mb-6">
                 <div className="text-right">
                   <div className="flex items-center gap-1.5 justify-end mb-1">
@@ -352,7 +345,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-auto pt-4 flex justify-between items-center text-sm">
                 <span className="text-textMuted">Month health</span>
                 <span className="text-success font-bold flex items-center gap-1">On track <span className="text-lg leading-none">✓</span></span>
@@ -365,7 +358,7 @@ const Dashboard = () => {
                 <h3 className="font-bold">Recent transactions</h3>
                 <button className="text-sm text-blue-500 hover:underline">View all</button>
               </div>
-              
+
               <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar pb-1">
                 <button className="px-3 py-1 bg-primary text-white text-xs font-semibold rounded-full whitespace-nowrap">All</button>
                 <button className="px-3 py-1 border border-borderLight text-textMuted hover:bg-gray-50 text-xs font-semibold rounded-full whitespace-nowrap">Food</button>
@@ -373,7 +366,7 @@ const Dashboard = () => {
                 <button className="px-3 py-1 border border-borderLight text-textMuted hover:bg-gray-50 text-xs font-semibold rounded-full whitespace-nowrap">Bills</button>
                 <button className="px-3 py-1 border border-borderLight text-textMuted hover:bg-gray-50 text-xs font-semibold rounded-full whitespace-nowrap">Income</button>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-2 border-b border-gray-50">
                   <div className="flex items-center gap-3">
@@ -387,7 +380,7 @@ const Dashboard = () => {
                   </div>
                   <div className="font-bold text-success text-sm">+₹60,000</div>
                 </div>
-                
+
                 <div className="flex justify-between items-center py-2 border-b border-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-500">
@@ -400,7 +393,7 @@ const Dashboard = () => {
                   </div>
                   <div className="font-bold text-danger text-sm">-₹12,000</div>
                 </div>
-                
+
                 <div className="flex justify-between items-center py-2 border-b border-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-primary">
@@ -413,7 +406,7 @@ const Dashboard = () => {
                   </div>
                   <div className="font-bold text-danger text-sm">-₹2,340</div>
                 </div>
-                
+
                 <div className="flex justify-between items-center py-2 border-b border-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-danger">
@@ -426,7 +419,7 @@ const Dashboard = () => {
                   </div>
                   <div className="font-bold text-danger text-sm">-₹1,500</div>
                 </div>
-                
+
                 <div className="flex justify-between items-center py-2 border-b border-gray-50">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-warning">
@@ -462,7 +455,7 @@ const Dashboard = () => {
                 <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">AI - FinBERT</span>
               </div>
               <p className="text-xs text-textMuted bg-gray-50 px-3 py-1.5 rounded-md mb-4 text-center">Based on ₹12,000 savings - opt-in</p>
-              
+
               <div className="w-full text-left text-xs mb-2 text-textMuted uppercase font-bold grid grid-cols-12 gap-2 px-1">
                 <div className="col-span-2">Ticker</div>
                 <div className="col-span-4">Company</div>
@@ -470,64 +463,64 @@ const Dashboard = () => {
                 <div className="col-span-2 text-center">Conf.</div>
                 <div className="col-span-2 text-right">Signal</div>
               </div>
-              
+
               <div className="space-y-3">
                 <div className="grid grid-cols-12 gap-2 items-center text-sm px-1">
                   <div className="col-span-2 font-bold">NVDA</div>
                   <div className="col-span-4 text-xs text-textMuted truncate">NVIDIA Corp</div>
                   <div className="col-span-2 text-right font-semibold">₹74,800</div>
                   <div className="col-span-2 flex items-center justify-center relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="absolute left-0 top-0 h-full bg-success" style={{width: '98%'}}></div>
+                    <div className="absolute left-0 top-0 h-full bg-success" style={{ width: '98%' }}></div>
                     <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-darkNavy z-10">98%</span>
                   </div>
                   <div className="col-span-2 text-right text-xs font-bold text-success">Bullish</div>
                 </div>
-                
+
                 <div className="grid grid-cols-12 gap-2 items-center text-sm px-1">
                   <div className="col-span-2 font-bold">MSFT</div>
                   <div className="col-span-4 text-xs text-textMuted truncate">Microsoft</div>
                   <div className="col-span-2 text-right font-semibold">₹34,900</div>
                   <div className="col-span-2 flex items-center justify-center relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="absolute left-0 top-0 h-full bg-success" style={{width: '85%'}}></div>
+                    <div className="absolute left-0 top-0 h-full bg-success" style={{ width: '85%' }}></div>
                     <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-darkNavy z-10">85%</span>
                   </div>
                   <div className="col-span-2 text-right text-xs font-bold text-success">Bullish</div>
                 </div>
-                
+
                 <div className="grid grid-cols-12 gap-2 items-center text-sm px-1">
                   <div className="col-span-2 font-bold">GOOGL</div>
                   <div className="col-span-4 text-xs text-textMuted truncate">Alphabet</div>
                   <div className="col-span-2 text-right font-semibold">₹14,500</div>
                   <div className="col-span-2 flex items-center justify-center relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="absolute left-0 top-0 h-full bg-success" style={{width: '80%'}}></div>
+                    <div className="absolute left-0 top-0 h-full bg-success" style={{ width: '80%' }}></div>
                     <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-darkNavy z-10">80%</span>
                   </div>
                   <div className="col-span-2 text-right text-xs font-bold text-success">Bullish</div>
                 </div>
-                
+
                 <div className="grid grid-cols-12 gap-2 items-center text-sm px-1">
                   <div className="col-span-2 font-bold">TSLA</div>
                   <div className="col-span-4 text-xs text-textMuted truncate">Tesla Inc</div>
                   <div className="col-span-2 text-right font-semibold">₹14,900</div>
                   <div className="col-span-2 flex items-center justify-center relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="absolute left-0 top-0 h-full bg-warning" style={{width: '50%'}}></div>
+                    <div className="absolute left-0 top-0 h-full bg-warning" style={{ width: '50%' }}></div>
                     <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-darkNavy z-10">50%</span>
                   </div>
                   <div className="col-span-2 text-right text-xs font-bold text-warning">Mixed</div>
                 </div>
-                
+
                 <div className="grid grid-cols-12 gap-2 items-center text-sm px-1">
                   <div className="col-span-2 font-bold">META</div>
                   <div className="col-span-4 text-xs text-textMuted truncate">Meta Platforms</div>
                   <div className="col-span-2 text-right font-semibold">₹40,700</div>
                   <div className="col-span-2 flex items-center justify-center relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="absolute left-0 top-0 h-full bg-success" style={{width: '70%'}}></div>
+                    <div className="absolute left-0 top-0 h-full bg-success" style={{ width: '70%' }}></div>
                     <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-darkNavy z-10">70%</span>
                   </div>
                   <div className="col-span-2 text-right text-xs font-bold text-success">Bullish</div>
                 </div>
               </div>
-              
+
               <div className="mt-auto pt-6 text-center">
                 <p className="text-[10px] text-textMuted leading-tight">Predictions are decision-support only — not financial advice.</p>
                 <p className="text-[10px] text-textMuted leading-tight">Powered by LSTM + FinBERT sentiment analysis.</p>
@@ -543,7 +536,7 @@ const Dashboard = () => {
                 <h3 className="font-bold">Financial calculators</h3>
                 <button className="text-sm text-blue-500 hover:underline">Save scenario</button>
               </div>
-              
+
               <div className="flex gap-2 mb-6">
                 <button className="px-4 py-1.5 bg-primary text-white text-sm font-medium rounded-lg">EMI</button>
                 <button className="px-4 py-1.5 border border-borderLight text-textDark hover:bg-gray-50 text-sm font-medium rounded-lg">SIP</button>

@@ -1,0 +1,56 @@
+{
+  "id": 1779375716200,
+  "name": "Template 6",
+  "income": 150000,
+  "categories": [
+    {
+      "id": 1,
+      "name": "Living Costs",
+      "percentage": 26.66,
+      "color": "#f97316",
+      "icon": "Home"
+    },
+    {
+      "id": 2,
+      "name": "Personal Expenses",
+      "percentage": 13.54,
+      "color": "#3b82f6",
+      "icon": "Heart"
+    },
+    {
+      "id": 3,
+      "name": "Savings",
+      "percentage": 11.333333333333332,
+      "color": "#22c55e",
+      "icon": "Briefcase"
+    },
+    {
+      "id": 4,
+      "name": "Investments",
+      "percentage": 12,
+      "color": "#eab308",
+      "icon": "TrendingUp"
+    },
+    {
+      "id": 1779273288798,
+      "name": "Dating",
+      "percentage": 6.466666666666667,
+      "color": "#a855f7",
+      "icon": "IndianRupee"
+    },
+    {
+      "id": 1779273289147,
+      "name": "EMI",
+      "percentage": 10,
+      "color": "#ec4899",
+      "icon": "IndianRupee"
+    },
+    {
+      "id": 1779273604739,
+      "name": "Send Money Home",
+      "percentage": 20,
+      "color": "#14b8a6",
+      "icon": "IndianRupee"
+    }
+  ]
+}
