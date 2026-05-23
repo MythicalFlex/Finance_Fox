@@ -9,6 +9,8 @@ import BudgetPage from './pages/BudgetPage';
 import CalculatorsPage from './pages/CalculatorsPage';
 import EMITrackerPage from './pages/EMITrackerPage';
 import StocksPage from './pages/StocksPage';
+import ExpenseHistoryPage from './pages/ExpenseHistoryPage';
+import AIAssistantPage from './pages/AIAssistantPage';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token');
@@ -29,6 +31,8 @@ function App() {
         {/* Protected Routes */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute><ExpensePage /></ProtectedRoute>} />
+        <Route path="/expense-history" element={<ProtectedRoute><ExpenseHistoryPage /></ProtectedRoute>} />
+        <Route path="/ai-assistant" element={<ProtectedRoute><AIAssistantPage /></ProtectedRoute>} />
         <Route path="/budget" element={<ProtectedRoute><BudgetPage /></ProtectedRoute>} />
         <Route path="/calculators" element={<ProtectedRoute><CalculatorsPage /></ProtectedRoute>} />
         <Route path="/emitracker" element={<ProtectedRoute><EMITrackerPage /></ProtectedRoute>} />

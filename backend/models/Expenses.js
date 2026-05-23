@@ -34,6 +34,10 @@ const expenseSchema = new mongoose.Schema(
     },
     stockSymbol: {
       type: String
+    },
+    date: {
+      type: Date,
+      default: Date.now
     }
   },
   {

@@ -246,7 +246,8 @@ app.post("/api/expenses", authenticateToken, async (req, res) => {
         categoryId: Number(expenseData.categoryId),
         templateId: Number(expenseData.templateId),
         isStock: expenseData.isStock || false,
-        stockSymbol: expenseData.stockSymbol
+        stockSymbol: expenseData.stockSymbol,
+        date: expenseData.date ? new Date(expenseData.date) : new Date()
       },
       { new: true, upsert: true }
     );
@@ -284,7 +285,8 @@ app.post("/api/expenses/sync-stocks", authenticateToken, async (req, res) => {
         categoryId: Number(categoryId),
         templateId: Number(templateId),
         isStock: true,
-        stockSymbol: stock.stockSymbol
+        stockSymbol: stock.stockSymbol,
+        date: stock.date ? new Date(stock.date) : new Date()
       }));
       await Expense.insertMany(newExpenses);
     }
@@ -525,6 +527,348 @@ app.post("/api/login", async (req, res) => {
     res.status(500).json({ error: "Failed to log in. Server error." });
   }
 });
+
+// POST AI Chatbot endpoint (user-specific with financial reasoning)
+app.post("/api/ai/chat", authenticateToken, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: "Message is required." });
+    }
+
+    // 1. Fetch User Data
+    const activeTemplate = await Template.findOne({ userId: req.user.id }).sort({ updatedAt: -1 });
+    const income = activeTemplate ? activeTemplate.income : 60000;
+    
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const expenses = await Expense.find({
+      userId: req.user.id,
+      date: { $gte: startOfMonth }
+    });
+    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+    const emis = await EMI.find({ userId: req.user.id });
+    const activeEMIs = emis.filter(e => Number(e.paidTenure) < Number(e.totalTenure));
+    const totalEMIs = activeEMIs.reduce((sum, e) => sum + Number(e.amount), 0);
+    const totalOutstandingDebt = activeEMIs.reduce((sum, e) => sum + (Number(e.amount) * (Number(e.totalTenure) - Number(e.paidTenure))), 0);
+
+    const netSavings = income - totalExpenses - totalEMIs;
+
+    // 2. Intent Classification
+    let intent = "general";
+    let targetAmount = null;
+
+    const lowerMessage = message.toLowerCase();
+    
+    // Check for affordability
+    const affordRegex = /(?:buy|afford|spend|purchase|cost|price)\s+.*?(\d[\d,]*\s*k?)/i;
+    const affordMatch = lowerMessage.match(affordRegex);
+    if (affordMatch) {
+      intent = "affordability";
+      let amountStr = affordMatch[1].replace(/,/g, "").trim();
+      if (amountStr.endsWith("k")) {
+        targetAmount = parseFloat(amountStr) * 1000;
+      } else {
+        targetAmount = parseFloat(amountStr);
+      }
+    } else if (lowerMessage.includes("saving") || lowerMessage.includes("save") || lowerMessage.includes("savings rate")) {
+      intent = "savings_rate";
+    } else if (lowerMessage.includes("budget") || lowerMessage.includes("over budget") || lowerMessage.includes("category")) {
+      intent = "budget_status";
+    } else if (lowerMessage.includes("debt") || lowerMessage.includes("emi") || lowerMessage.includes("owe") || lowerMessage.includes("loan")) {
+      intent = "debt_load";
+    }
+
+    // 3. Deterministic Calculations
+    const calculations = {
+      income,
+      totalExpenses,
+      totalEMIs,
+      netSavings
+    };
+    
+    let structuredAdvice = [];
+
+    if (intent === "affordability") {
+      calculations.targetAmount = targetAmount;
+      if (netSavings <= 0) {
+        calculations.affordable = false;
+        calculations.monthsNeeded = Infinity;
+        structuredAdvice.push({
+          type: "danger",
+          text: `Critical: Your current monthly expenses & EMIs exceed your income (Net Savings: -₹${Math.abs(netSavings)}). You cannot afford this purchase.`
+        });
+      } else {
+        calculations.monthsNeeded = Number((targetAmount / netSavings).toFixed(2));
+        calculations.affordable = targetAmount <= netSavings;
+        
+        if (calculations.affordable) {
+          structuredAdvice.push({
+            type: "success",
+            text: `Yes! You can afford this item immediately (₹${targetAmount.toLocaleString()}) using this month's surplus savings of ₹${netSavings.toLocaleString()}.`
+          });
+        } else if (calculations.monthsNeeded <= 3) {
+          structuredAdvice.push({
+            type: "warning",
+            text: `Moderate: Safe if you save your monthly surplus of ₹${netSavings.toLocaleString()} for ${calculations.monthsNeeded} months.`
+          });
+        } else {
+          structuredAdvice.push({
+            type: "danger",
+            text: `Leveraged: This purchase requires saving for ${calculations.monthsNeeded} months. We recommend holding off on this purchase.`
+          });
+        }
+      }
+    } else if (intent === "savings_rate") {
+      const savingsRate = income > 0 ? (netSavings / income) * 100 : 0;
+      calculations.savingsRate = Number(savingsRate.toFixed(2));
+      
+      if (savingsRate >= 20) {
+        calculations.rating = "Excellent";
+        structuredAdvice.push({
+          type: "success",
+          text: `Superb! Your savings rate of ${calculations.savingsRate}% exceeds the recommended 20% savings rule of thumb.`
+        });
+      } else if (savingsRate >= 10) {
+        calculations.rating = "Healthy";
+        structuredAdvice.push({
+          type: "warning",
+          text: `Healthy: Your savings rate is ${calculations.savingsRate}%. Try to cut down discretionary spending to reach 20%.`
+        });
+      } else if (savingsRate > 0) {
+        calculations.rating = "Low";
+        structuredAdvice.push({
+          type: "danger",
+          text: `Low savings rate: You are only saving ${calculations.savingsRate}% of your income. Evaluate your expense logs to find leaks.`
+        });
+      } else {
+        calculations.rating = "Critical";
+        structuredAdvice.push({
+          type: "danger",
+          text: `Critical: You are overspending (Surplus: -₹${Math.abs(netSavings)}). You have a negative savings rate.`
+        });
+      }
+    } else if (intent === "budget_status") {
+      const categoriesBreakdown = [];
+      let overBudgetCategories = 0;
+      
+      if (activeTemplate && activeTemplate.categories) {
+        activeTemplate.categories.forEach(cat => {
+          const catBudget = (income * cat.percentage) / 100;
+          const catSpent = expenses.filter(e => e.categoryId === cat.id).reduce((sum, e) => sum + e.amount, 0);
+          const percentUsed = catBudget > 0 ? (catSpent / catBudget) * 100 : 0;
+          const status = {
+            name: cat.name,
+            budget: catBudget,
+            spent: catSpent,
+            percentUsed: Number(percentUsed.toFixed(1)),
+            overBudget: catSpent > catBudget
+          };
+          categoriesBreakdown.push(status);
+          
+          if (status.overBudget) {
+            overBudgetCategories++;
+            structuredAdvice.push({
+              type: "danger",
+              text: `Over Limit: "${cat.name}" has consumed ${status.percentUsed}% of its ₹${catBudget.toLocaleString()} limit (Over by ₹${(catSpent - catBudget).toLocaleString()}).`
+            });
+          } else if (percentUsed >= 90) {
+            structuredAdvice.push({
+              type: "warning",
+              text: `Near Limit: "${cat.name}" has consumed ${status.percentUsed}% of its ₹${catBudget.toLocaleString()} limit.`
+            });
+          }
+        });
+      }
+
+      calculations.categories = categoriesBreakdown;
+      calculations.overBudgetCategories = overBudgetCategories;
+
+      if (overBudgetCategories === 0) {
+        structuredAdvice.push({
+          type: "success",
+          text: "Excellent: All spending categories are currently within their budget limits!"
+        });
+      }
+    } else if (intent === "debt_load") {
+      const emiRatio = income > 0 ? (totalEMIs / income) * 100 : 0;
+      calculations.emiRatio = Number(emiRatio.toFixed(2));
+      calculations.totalOutstandingDebt = totalOutstandingDebt;
+      calculations.activeEMIsCount = activeEMIs.length;
+
+      if (emiRatio > 35) {
+        structuredAdvice.push({
+          type: "danger",
+          text: `High Leverage: Your monthly EMI commitments consume ${calculations.emiRatio}% of your income. Keep it below 35%.`
+        });
+      } else if (emiRatio > 15) {
+        structuredAdvice.push({
+          type: "warning",
+          text: `Moderate Leverage: Your EMI-to-income ratio is ${calculations.emiRatio}%. Avoid taking on new debt.`
+        });
+      } else if (emiRatio > 0) {
+        structuredAdvice.push({
+          type: "success",
+          text: `Low Debt: Your EMI load is healthy at ${calculations.emiRatio}% of your monthly income.`
+        });
+      } else {
+        structuredAdvice.push({
+          type: "success",
+          text: "Zero Debt Load: You currently have no outstanding active EMIs!"
+        });
+      }
+    }
+
+    // 4. Explanation Generation (LLM or mock fallback)
+    let explanation = "";
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (apiKey) {
+      // Gemini API real call using built-in fetch
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        
+        let contextPrompt = `You are Finance Fox AI, a financial assistant. The user asked: "${message}".
+Here is their verified financial data from their profile:
+- Monthly Income: ₹${income}
+- Total Monthly Expenses: ₹${totalExpenses}
+- Total Monthly EMIs: ₹${totalEMIs}
+- Net Monthly Savings: ₹${netSavings}
+- Active Template: ${activeTemplate ? activeTemplate.name : 'Default'}
+`;
+
+        if (intent === "affordability") {
+          contextPrompt += `
+Deterministic affordability calculations:
+- Target Item Price: ₹${targetAmount}
+- Can afford immediately: ${calculations.affordable}
+- Months of saving needed: ${calculations.monthsNeeded}
+`;
+        } else if (intent === "savings_rate") {
+          contextPrompt += `
+Deterministic savings calculations:
+- Savings Rate: ${calculations.savingsRate}%
+- Rating: ${calculations.rating}
+`;
+        } else if (intent === "budget_status") {
+          contextPrompt += `
+Deterministic budget calculations:
+- Categories: ${JSON.stringify(calculations.categories)}
+- Number of categories over budget: ${calculations.overBudgetCategories}
+`;
+        } else if (intent === "debt_load") {
+          contextPrompt += `
+Deterministic debt calculations:
+- EMI to Income Ratio: ${calculations.emiRatio}%
+- Total Outstanding Debt: ₹${calculations.totalOutstandingDebt}
+- Active Loans: ${calculations.activeEMIsCount}
+`;
+        }
+
+        contextPrompt += `
+Write a concise, professional explanation (maximum 2-3 short paragraphs) answering the user's question directly using these exact numbers. Explain the math and data fetched. Provide short actionable tips. Be encouraging but honest. Do not use markdown headers (like # or ##), just return normal text or bullet lists.`;
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: contextPrompt }] }]
+          })
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.candidates && resData.candidates[0] && resData.candidates[0].content && resData.candidates[0].content.parts && resData.candidates[0].content.parts[0]) {
+            explanation = resData.candidates[0].content.parts[0].text;
+          }
+        }
+      } catch (err) {
+        console.error("Gemini API call error, falling back to deterministic explanation:", err);
+      }
+    }
+
+    // Fallback explanation if no API key or API fails
+    if (!explanation) {
+      if (intent === "affordability") {
+        if (netSavings <= 0) {
+          explanation = `Based on your real financial logs, you cannot currently afford to buy this item for ₹${targetAmount.toLocaleString()} because your net monthly savings are negative (₹${netSavings}). You are spending ₹${totalExpenses.toLocaleString()} on expenses and paying ₹${totalEMIs.toLocaleString()} in EMIs against an income of ₹${income.toLocaleString()}. 
+
+I highly recommend reviewing your discretionary expense categories (like dining out or shopping) or restructuring your EMIs before making any new purchases.`;
+        } else {
+          const affordabilityText = calculations.affordable 
+            ? `Yes, you can afford to buy this item for ₹${targetAmount.toLocaleString()} immediately! Your net monthly savings are ₹${netSavings.toLocaleString()} (Income ₹${income.toLocaleString()} - Expenses ₹${totalExpenses.toLocaleString()} - EMIs ₹${totalEMIs.toLocaleString()}), which is greater than the cost of the item. This purchase will leave you with a surplus of ₹${netSavings - targetAmount} in savings this month.`
+            : `You cannot afford this item immediately using this month's savings, but you can afford it by saving for **${calculations.monthsNeeded} months**. Your current net monthly savings are ₹${netSavings.toLocaleString()}. If you allocate your entire surplus, you will reach the target of ₹${targetAmount.toLocaleString()} in approximately ${Math.ceil(calculations.monthsNeeded)} months.`;
+
+          explanation = `${affordabilityText}
+
+This analysis assumes your monthly income, expenses, and EMI structures remain stable. If you decide to proceed, try to automate a transfer of ₹${netSavings} into a dedicated savings bucket.`;
+        }
+      } else if (intent === "savings_rate") {
+        explanation = `Your current savings rate is **${calculations.savingsRate}%**. 
+
+This is calculated by taking your net monthly surplus of **₹${netSavings.toLocaleString()}** (Income of ₹${income.toLocaleString()} minus Expenses of ₹${totalExpenses.toLocaleString()} and EMIs of ₹${totalEMIs.toLocaleString()}) and dividing it by your income. 
+
+Here is the rating: **${calculations.rating}**. Financial planners generally recommend a savings rate of at least 20% to build wealth and fund retirement. ${calculations.savingsRate < 20 ? "To increase this rate, look into reducing expenses or paying down high-interest EMIs." : "Excellent job maintaining a disciplined saving structure!"}`;
+      } else if (intent === "budget_status") {
+        const overList = calculations.categories.filter(c => c.overBudget);
+        const nearList = calculations.categories.filter(c => !c.overBudget && c.percentUsed >= 90);
+        
+        let budgetDetails = `Against your monthly income of ₹${income.toLocaleString()}, you have spent a total of **₹${totalExpenses.toLocaleString()}** this month. 
+
+`;
+        if (overList.length > 0) {
+          budgetDetails += `You have exceeded your budget limits in **${overList.length}** category/categories:
+` + overList.map(c => `- **${c.name}**: Spent ₹${c.spent.toLocaleString()} / Budget ₹${c.budget.toLocaleString()} (${c.percentUsed}% used)`).join("\n") + "\n\n";
+        }
+        if (nearList.length > 0) {
+          budgetDetails += `You are close to the limit in **${nearList.length}** category/categories:
+` + nearList.map(c => `- **${c.name}**: Spent ₹${c.spent.toLocaleString()} / Budget ₹${c.budget.toLocaleString()} (${c.percentUsed}% used)`).join("\n") + "\n\n";
+        }
+        if (overList.length === 0 && nearList.length === 0) {
+          budgetDetails += `Fantastic! All your spending categories are currently within their allocated limits. Your budget is in perfect health.`;
+        } else {
+          budgetDetails += `Please adjust your spending in the over-limit categories to prevent eroding your monthly savings goals.`;
+        }
+        explanation = budgetDetails;
+      } else if (intent === "debt_load") {
+        explanation = `Your monthly EMI debt load is **₹${totalEMIs.toLocaleString()}**, representing **${calculations.emiRatio}%** of your monthly income of ₹${income.toLocaleString()}. 
+
+Your total outstanding debt principal is **₹${totalOutstandingDebt.toLocaleString()}** across **${calculations.activeEMIsCount}** active loan(s). 
+
+An EMI-to-income ratio of **${calculations.emiRatio}%** is considered **${calculations.emiRatio > 35 ? "High (Critical)" : "Healthy"}**. Keeping your total fixed debt obligations under 35% of your gross income ensures you maintain enough flexibility to save and pay for daily living expenses.`;
+      } else {
+        explanation = `Hello! I am your Finance Fox AI Assistant. I can help you analyze your budget templates, expense records, and debt loads. 
+
+Here is a summary of your current financial health:
+- **Monthly Income**: ₹${income.toLocaleString()}
+- **Month Expenses**: ₹${totalExpenses.toLocaleString()}
+- **Active EMIs**: ₹${totalEMIs.toLocaleString()}
+- **Current Surplus (Net Savings)**: ₹${netSavings.toLocaleString()}
+
+Ask me something specific, like:
+- *"Can I afford a laptop for ₹45,000?"*
+- *"What is my savings rate?"*
+- *"Am I over budget?"*
+- *"Show my debt load"*`;
+      }
+    }
+
+    // 5. Return structured response
+    res.json({
+      explanation,
+      intent,
+      calculations,
+      structuredAdvice
+    });
+
+  } catch (error) {
+    console.error("AI Chat error:", error);
+    res.status(500).json({ error: "AI Chat server error." });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
