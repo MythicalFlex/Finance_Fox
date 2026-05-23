@@ -181,10 +181,6 @@ const Dashboard = () => {
               <span>{now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <span className="text-primary font-bold">{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
             </button>
-            <button className="w-8 h-8 rounded-full border border-borderLight flex items-center justify-center text-textMuted hover:bg-gray-50 relative">
-              <Bell size={16} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full"></span>
-            </button>
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}

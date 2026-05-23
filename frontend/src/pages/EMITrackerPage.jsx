@@ -24,6 +24,30 @@ const EMITrackerPage = () => {
   const [toast, setToast] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [userInitials, setUserInitials] = useState('U');
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        if (parsed && parsed.name) {
+          const nameParts = parsed.name.trim().split(/\s+/);
+          const initials = nameParts.map(p => p[0]).join('').substring(0, 2).toUpperCase();
+          setUserInitials(initials || 'U');
+        }
+      } catch (e) {
+        console.error('Error parsing stored user:', e);
+      }
+    }
+  }, []);
+
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setProfileDropdownOpen(false);
+    navigate('/login');
+  };
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [now, setNow] = useState(new Date());
   
@@ -310,18 +334,12 @@ const EMITrackerPage = () => {
               <span>{now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <span className="text-primary font-bold">{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
             </button>
-            <button className="w-8 h-8 rounded-full border border-borderLight flex items-center justify-center text-textMuted hover:bg-gray-50 relative">
-              <Bell size={16} />
-              {alertList.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-danger rounded-full"></span>
-              )}
-            </button>
             <div className="relative" ref={profileRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shadow-sm hover:bg-orange-600 transition-colors cursor-pointer"
               >
-                TD
+                {userInitials}
               </button>
               {profileDropdownOpen && (
                 <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-borderLight rounded-xl shadow-xl py-1.5 z-50 animate-fadeIn">
@@ -329,8 +347,8 @@ const EMITrackerPage = () => {
                     Profile Settings
                   </button>
                   <div className="mx-3 my-1 border-t border-gray-100" />
-                  <button className="w-full text-left px-4 py-2.5 text-xs font-semibold text-primary hover:bg-primaryLight transition-colors" onClick={() => setProfileDropdownOpen(false)}>
-                    Sign Out
+                  <button className="w-full text-left px-4 py-2.5 text-xs font-semibold text-primary hover:bg-orange-50 transition-colors flex items-center gap-2" onClick={handleSignOut}>
+                    <span>Sign Out</span>
                   </button>
                 </div>
               )}
