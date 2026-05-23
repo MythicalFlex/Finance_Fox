@@ -6,6 +6,9 @@ const fs = require("fs");
 const path = require("path");
 const bcrypt = require("bcrypt");
 const User = require("./models/Users");
+const Template = require("./models/Templates");
+const Expense = require("./models/Expenses");
+const EMI = require("./models/EMIs");
 const jwt = require("jsonwebtoken");
 dotenv.config();
 const app = express();
@@ -84,56 +87,68 @@ const TEMPLATES_DIR = path.join(__dirname, "templates");
 if (!fs.existsSync(TEMPLATES_DIR)) {
   fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
 }
-// GET all templates
-app.get("/api/templates", (req, res) => {
+// Auth middleware to authenticate user token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "Access denied. No token provided." });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET || "fallbacksecret", (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: "Invalid or expired token." });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// GET all templates (user-specific)
+app.get("/api/templates", authenticateToken, async (req, res) => {
   try {
-    const files = fs.readdirSync(TEMPLATES_DIR);
-    const templates = files
-      .filter((file) => file.endsWith(".json") && file !== "emis.json")
-      .map((file) => {
-        const filePath = path.join(TEMPLATES_DIR, file);
-        const data = fs.readFileSync(filePath, "utf8");
-        return JSON.parse(data);
-      });
+    const templates = await Template.find({ userId: req.user.id });
     res.json(templates);
   } catch (error) {
     console.error("Error reading templates:", error);
     res.status(500).json({ error: "Failed to read templates" });
   }
 });
-// POST save a template
-app.post("/api/templates", (req, res) => {
+
+// POST save a template (user-specific)
+app.post("/api/templates", authenticateToken, async (req, res) => {
   try {
-    const template = req.body;
-    if (!template || !template.id) {
+    const templateData = req.body;
+    if (!templateData || !templateData.id) {
       return res.status(400).json({ error: "Invalid template data" });
     }
-    const fileName = `${template.id}.json`;
-    const filePath = path.join(TEMPLATES_DIR, fileName);
-    fs.writeFileSync(filePath, JSON.stringify(template, null, 2), "utf8");
+
+    // Upsert template in database belonging to user
+    const template = await Template.findOneAndUpdate(
+      { userId: req.user.id, id: templateData.id },
+      {
+        userId: req.user.id,
+        id: templateData.id,
+        name: templateData.name,
+        income: templateData.income,
+        categories: templateData.categories
+      },
+      { new: true, upsert: true }
+    );
+
     res.status(201).json({ message: "Template saved successfully", template });
   } catch (error) {
     console.error("Error saving template:", error);
     res.status(500).json({ error: "Failed to save template" });
   }
 });
-// DELETE a template
-app.delete("/api/templates/:id", (req, res) => {
+
+// DELETE a template (user-specific)
+app.delete("/api/templates/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const fileName = `${id}.json`;
-    const filePath = path.join(TEMPLATES_DIR, fileName);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      // Clean up corresponding template stocks if they exist
-      const stocksFilePath = path.join(
-        TEMPLATES_DIR,
-        "stocks",
-        `stocks-${id}.json`,
-      );
-      if (fs.existsSync(stocksFilePath)) {
-        fs.unlinkSync(stocksFilePath);
-      }
+    const result = await Template.findOneAndDelete({ userId: req.user.id, id: Number(id) });
+    if (result) {
       res.json({ message: "Template deleted successfully" });
     } else {
       res.status(404).json({ error: "Template not found" });
@@ -143,6 +158,172 @@ app.delete("/api/templates/:id", (req, res) => {
     res.status(500).json({ error: "Failed to delete template" });
   }
 });
+
+// GET all EMIs (user-specific)
+app.get("/api/emis", authenticateToken, async (req, res) => {
+  try {
+    const emis = await EMI.find({ userId: req.user.id });
+    res.json(emis);
+  } catch (error) {
+    console.error("Error reading EMIs:", error);
+    res.status(500).json({ error: "Failed to read EMIs" });
+  }
+});
+
+// POST save / update a single EMI (user-specific)
+app.post("/api/emis", authenticateToken, async (req, res) => {
+  try {
+    const emiData = req.body;
+    if (!emiData || !emiData.id) {
+      return res.status(400).json({ error: "Invalid EMI data" });
+    }
+
+    const emi = await EMI.findOneAndUpdate(
+      { userId: req.user.id, id: emiData.id },
+      {
+        userId: req.user.id,
+        id: emiData.id,
+        name: emiData.name,
+        lender: emiData.lender,
+        amount: Number(emiData.amount),
+        dueDate: Number(emiData.dueDate),
+        totalTenure: Number(emiData.totalTenure),
+        paidTenure: Number(emiData.paidTenure),
+        lastPaidDate: emiData.lastPaidDate
+      },
+      { new: true, upsert: true }
+    );
+
+    res.status(201).json({ message: "EMI saved successfully", emi });
+  } catch (error) {
+    console.error("Error saving EMI:", error);
+    res.status(500).json({ error: "Failed to save EMI" });
+  }
+});
+
+// DELETE an EMI (user-specific)
+app.delete("/api/emis/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await EMI.findOneAndDelete({ userId: req.user.id, id: Number(id) });
+    if (result) {
+      res.json({ message: "EMI deleted successfully" });
+    } else {
+      res.status(404).json({ error: "EMI not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting EMI:", error);
+    res.status(500).json({ error: "Failed to delete EMI" });
+  }
+});
+
+// GET all expenses (user-specific)
+app.get("/api/expenses", authenticateToken, async (req, res) => {
+  try {
+    const expenses = await Expense.find({ userId: req.user.id });
+    res.json(expenses);
+  } catch (error) {
+    console.error("Error reading expenses:", error);
+    res.status(500).json({ error: "Failed to read expenses" });
+  }
+});
+
+// POST save / update a single expense (user-specific)
+app.post("/api/expenses", authenticateToken, async (req, res) => {
+  try {
+    const expenseData = req.body;
+    if (!expenseData || !expenseData.id) {
+      return res.status(400).json({ error: "Invalid expense data" });
+    }
+
+    const expense = await Expense.findOneAndUpdate(
+      { userId: req.user.id, id: String(expenseData.id) },
+      {
+        userId: req.user.id,
+        id: String(expenseData.id),
+        name: expenseData.name,
+        amount: Number(expenseData.amount),
+        categoryId: Number(expenseData.categoryId),
+        templateId: Number(expenseData.templateId),
+        isStock: expenseData.isStock || false,
+        stockSymbol: expenseData.stockSymbol
+      },
+      { new: true, upsert: true }
+    );
+
+    res.status(201).json({ message: "Expense saved successfully", expense });
+  } catch (error) {
+    console.error("Error saving expense:", error);
+    res.status(500).json({ error: "Failed to save expense" });
+  }
+});
+
+// POST bulk sync stock expenses (user-specific)
+app.post("/api/expenses/sync-stocks", authenticateToken, async (req, res) => {
+  try {
+    const { templateId, categoryId, stocks } = req.body;
+    if (!templateId || !categoryId || !Array.isArray(stocks)) {
+      return res.status(400).json({ error: "Invalid sync data" });
+    }
+
+    // Delete existing stock expenses for this template & category
+    await Expense.deleteMany({
+      userId: req.user.id,
+      templateId: Number(templateId),
+      categoryId: Number(categoryId),
+      isStock: true
+    });
+
+    // Insert new stock expenses if any
+    if (stocks.length > 0) {
+      const newExpenses = stocks.map(stock => ({
+        userId: req.user.id,
+        id: String(stock.id),
+        name: stock.name,
+        amount: Number(stock.amount),
+        categoryId: Number(categoryId),
+        templateId: Number(templateId),
+        isStock: true,
+        stockSymbol: stock.stockSymbol
+      }));
+      await Expense.insertMany(newExpenses);
+    }
+
+    res.json({ message: "Stock expenses synced successfully" });
+  } catch (error) {
+    console.error("Error syncing stock expenses:", error);
+    res.status(500).json({ error: "Failed to sync stock expenses" });
+  }
+});
+
+// DELETE a specific expense (user-specific)
+app.delete("/api/expenses/:id", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await Expense.findOneAndDelete({ userId: req.user.id, id });
+    if (result) {
+      res.json({ message: "Expense deleted successfully" });
+    } else {
+      res.status(404).json({ error: "Expense not found" });
+    }
+  } catch (error) {
+    console.error("Error deleting expense:", error);
+    res.status(500).json({ error: "Failed to delete expense" });
+  }
+});
+
+// DELETE all expenses under a template (user-specific)
+app.delete("/api/expenses/template/:templateId", authenticateToken, async (req, res) => {
+  try {
+    const { templateId } = req.params;
+    await Expense.deleteMany({ userId: req.user.id, templateId: Number(templateId) });
+    res.json({ message: "Expenses deleted for template" });
+  } catch (error) {
+    console.error("Error deleting template expenses:", error);
+    res.status(500).json({ error: "Failed to delete expenses" });
+  }
+});
+
 // Stocks subfolder setup
 const STOCKS_DIR = path.join(TEMPLATES_DIR, "stocks");
 // Ensure Stocks folder exists

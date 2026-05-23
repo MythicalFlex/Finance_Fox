@@ -362,7 +362,12 @@ const StocksPage = () => {
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/templates');
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/templates', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           setSavedTemplates(data);
@@ -446,7 +451,7 @@ const StocksPage = () => {
   const remainingBudget = investmentBudget - totalCuratedCost;
 
   // Sync stocks in Buying List to global expense logs
-  const syncBuyingListToExpenses = (newBuyingList) => {
+  const syncBuyingListToExpenses = async (newBuyingList) => {
     if (!investmentCategory || !activeTemplateId) return;
 
     try {
@@ -477,6 +482,21 @@ const StocksPage = () => {
       // Merge and save
       const updatedLogs = [...logs, ...newStockExpenses];
       localStorage.setItem('expenseLogs', JSON.stringify(updatedLogs));
+
+      // Push to backend database
+      const token = localStorage.getItem('token');
+      await fetch('http://localhost:5000/api/expenses/sync-stocks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          templateId: activeTemplateId,
+          categoryId: investmentCategory.id,
+          stocks: newStockExpenses
+        })
+      });
     } catch (e) {
       console.error('Error syncing buying list to expense logs:', e);
     }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   List, Bell, IndianRupee, ChevronDown, AlertCircle, CheckCircle2,
-  Landmark, Clock, Trash2, Plus, Calendar, ArrowRight, ShieldCheck
+  Landmark, Clock, Trash2, Plus, Calendar, ArrowRight, ShieldCheck, Undo
 } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
@@ -50,7 +50,7 @@ const EMITrackerPage = () => {
   };
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [now, setNow] = useState(new Date());
-  
+
   // Dropdown states for metrics cards
   const [repaymentDropdownOpen, setRepaymentDropdownOpen] = useState(false);
   const [tenureDropdownOpen, setTenureDropdownOpen] = useState(false);
@@ -95,7 +95,12 @@ const EMITrackerPage = () => {
   useEffect(() => {
     const fetchEMIs = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/emis');
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:5000/api/emis', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (res.ok) {
           const data = await res.json();
           setEmis(data);
@@ -149,22 +154,69 @@ const EMITrackerPage = () => {
       // Optimistic update
       setEmis(updatedEmis);
 
+      const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:5000/api/emis', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updatedEmi)
       });
 
       if (res.ok) {
-        showToast('Instalment payment recorded successfully! 🎉', 'success');
+        showToast('Installment payment recorded successfully! 🎉', 'success');
       } else {
         throw new Error('Failed to sync with backend');
       }
     } catch (err) {
       console.error(err);
       showToast('Could not sync payment. Please try again.', 'error');
+    }
+  };
+
+  const handleRollbackEMI = async (id) => {
+    try {
+      let updatedEmi = null;
+      const updatedEmis = emis.map(e => {
+        if (e.id === id) {
+          const nextPaidTenure = Math.max(0, Number(e.paidTenure) - 1);
+          const lastPaid = nextPaidTenure > 0 
+            ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+            : null;
+          updatedEmi = {
+            ...e,
+            paidTenure: nextPaidTenure,
+            lastPaidDate: lastPaid
+          };
+          return updatedEmi;
+        }
+        return e;
+      });
+
+      if (!updatedEmi) return;
+
+      // Optimistic update
+      setEmis(updatedEmis);
+
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/emis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedEmi)
+      });
+
+      if (res.ok) {
+        showToast('EMI payment rolled back successfully! ↩️', 'success');
+      } else {
+        throw new Error('Failed to sync with backend');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Could not sync rollback. Please try again.', 'error');
     }
   };
 
@@ -177,7 +229,7 @@ const EMITrackerPage = () => {
     if (!amount || Number(amount) <= 0) return showToast('Enter a valid monthly EMI amount.', 'error');
     if (!dueDate || Number(dueDate) < 1 || Number(dueDate) > 31) return showToast('Due date must be between 1 and 31.', 'error');
     if (!totalTenure || Number(totalTenure) <= 0) return showToast('Total tenure must be greater than 0 months.', 'error');
-    
+
     const pTenure = Number(paidTenure) || 0;
     if (pTenure < 0 || pTenure > Number(totalTenure)) {
       return showToast('Paid tenure cannot exceed total tenure.', 'error');
@@ -195,10 +247,12 @@ const EMITrackerPage = () => {
     };
 
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch('http://localhost:5000/api/emis', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(newEMI)
       });
@@ -225,8 +279,12 @@ const EMITrackerPage = () => {
   // Handle deleting EMI
   const handleDeleteEMI = async (id) => {
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch(`http://localhost:5000/api/emis/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (res.ok) {
@@ -248,7 +306,7 @@ const EMITrackerPage = () => {
   const totalPaidAmount = emis.reduce((sum, e) => sum + (Number(e.amount) * Number(e.paidTenure)), 0);
   const totalLeftAmount = emis.reduce((sum, e) => sum + (Number(e.amount) * (Number(e.totalTenure) - Number(e.paidTenure))), 0);
   const totalActiveLoansCount = activeEMIs.length;
-  
+
   // Calculate average aggregate tenure progress percentage
   const totalTenureMonths = emis.reduce((sum, e) => sum + Number(e.totalTenure), 0);
   const totalPaidTenureMonths = emis.reduce((sum, e) => sum + Number(e.paidTenure), 0);
@@ -262,7 +320,7 @@ const EMITrackerPage = () => {
     const dueDay = Number(e.dueDate);
     const todayDay = now.getDate();
     const diff = dueDay - todayDay;
-    
+
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentMonthName = monthNames[now.getMonth()];
 
@@ -362,7 +420,7 @@ const EMITrackerPage = () => {
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold mb-1 text-darkNavy">EMI Tracking Center</h2>
-              <p className="text-textMuted text-sm">Monitor outstanding debt commitments, register monthly instalments, and track payment schedules.</p>
+              <p className="text-textMuted text-sm">Monitor outstanding debt commitments, register monthly installments, and track payment schedules.</p>
             </div>
           </div>
 
@@ -373,11 +431,10 @@ const EMITrackerPage = () => {
                 {alertList.map((alert, i) => (
                   <div
                     key={alert.id || i}
-                    className={`flex items-start gap-3.5 p-4 rounded-2xl border animate-fadeIn transition-all shadow-sm ${
-                      alert.type === 'danger'
+                    className={`flex items-start gap-3.5 p-4 rounded-2xl border animate-fadeIn transition-all shadow-sm ${alert.type === 'danger'
                         ? 'bg-rose-50 border-rose-200 text-rose-800'
                         : 'bg-amber-50 border-amber-200 text-amber-800'
-                    }`}
+                      }`}
                   >
                     <AlertCircle className={`shrink-0 mt-0.5 ${alert.type === 'danger' ? 'text-rose-500' : 'text-amber-500'}`} size={18} />
                     <div className="flex-1">
@@ -512,10 +569,10 @@ const EMITrackerPage = () => {
 
           {/* Main Content Layout Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            {/* Left Section: Active Loan Instalments list */}
+            {/* Left Section: Active Loan Installments list */}
             <div className="lg:col-span-2 space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg text-darkNavy">Active Instalments List</h3>
+                <h3 className="font-bold text-lg text-darkNavy">Active Installments List</h3>
                 <span className="text-xs font-bold text-textMuted bg-gray-100 px-3 py-1 rounded-full">{emis.length} Total Loans</span>
               </div>
 
@@ -538,7 +595,7 @@ const EMITrackerPage = () => {
                     const paidThisMonth = isPaidThisMonth(emi, now);
                     const isCompleted = Number(emi.paidTenure) >= Number(emi.totalTenure);
                     const percent = isCompleted ? 100 : (Number(emi.paidTenure) / Number(emi.totalTenure)) * 100;
-                    
+
                     const dueDay = Number(emi.dueDate);
                     const isOverdue = !paidThisMonth && !isCompleted && now.getDate() > dueDay;
                     const isDueSoon = !paidThisMonth && !isCompleted && (dueDay - now.getDate() <= 7) && (dueDay - now.getDate() >= 0);
@@ -552,26 +609,24 @@ const EMITrackerPage = () => {
                     return (
                       <div
                         key={emi.id}
-                        className={`bg-white rounded-2xl border transition-all duration-300 relative overflow-hidden flex flex-col p-6 shadow-sm hover:shadow-md ${
-                          isCompleted
+                        className={`bg-white rounded-2xl border transition-all duration-300 relative overflow-hidden flex flex-col p-6 shadow-sm hover:shadow-md ${isCompleted
                             ? 'border-emerald-200 bg-emerald-50/10'
                             : isOverdue
-                            ? 'border-rose-300 ring-2 ring-rose-50'
-                            : paidThisMonth
-                            ? 'border-primary/20 bg-primaryLight/5'
-                            : 'border-borderLight'
-                        }`}
+                              ? 'border-rose-300 ring-2 ring-rose-50'
+                              : paidThisMonth
+                                ? 'border-primary/20 bg-primaryLight/5'
+                                : 'border-borderLight'
+                          }`}
                       >
                         {/* Top info and status badge */}
                         <div className="flex justify-between items-start gap-4 mb-4">
                           <div className="flex gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                              isCompleted 
-                                ? 'bg-emerald-100 text-emerald-700' 
-                                : isOverdue 
-                                ? 'bg-rose-100 text-rose-700' 
-                                : 'bg-primaryLight text-primary'
-                            }`}>
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isCompleted
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : isOverdue
+                                  ? 'bg-rose-100 text-rose-700'
+                                  : 'bg-primaryLight text-primary'
+                              }`}>
                               <Landmark size={20} />
                             </div>
                             <div>
@@ -608,29 +663,26 @@ const EMITrackerPage = () => {
                         {/* Mid Section: Amount and check action */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-y border-gray-100/80 mb-4 bg-gray-50/50 -mx-6 px-6">
                           <div>
-                            <span className="text-[10px] font-bold text-textMuted uppercase tracking-wider block">Monthly instalment</span>
+                            <span className="text-[10px] font-bold text-textMuted uppercase tracking-wider block">Monthly installment</span>
                             <span className="text-2xl font-black text-darkNavy">{fmt(emi.amount)} <span className="text-xs text-textMuted font-bold">/ month</span></span>
                           </div>
 
-                          {!isCompleted && (
-                            <div className="flex items-center gap-3">
-                              {paidThisMonth ? (
-                                <button
-                                  disabled
-                                  className="px-4 py-2.5 rounded-xl border border-primary/20 text-primary bg-primaryLight/20 text-xs font-bold flex items-center gap-1.5 cursor-not-allowed opacity-90"
-                                >
-                                  <CheckCircle2 size={15} /> Up to Date
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handlePayEMI(emi.id)}
-                                  className="px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-extrabold shadow-sm hover:bg-orange-600 transition-all flex items-center gap-1.5 hover:scale-102"
-                                >
-                                  <CheckCircle2 size={15} /> Pay {now.toLocaleString('en-IN', { month: 'short' })} EMI
-                                </button>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handlePayEMI(emi.id)}
+                              disabled={isCompleted}
+                              className="px-4 py-2.5 bg-primary text-white rounded-xl text-xs font-extrabold shadow-sm hover:bg-orange-600 transition-all flex items-center gap-1.5 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            >
+                              <CheckCircle2 size={15} /> Pay Next EMI
+                            </button>
+                            <button
+                              onClick={() => handleRollbackEMI(emi.id)}
+                              disabled={Number(emi.paidTenure) === 0}
+                              className="px-4 py-2.5 bg-white border border-gray-200 text-textDark rounded-xl text-xs font-extrabold shadow-sm hover:bg-gray-50 transition-all flex items-center gap-1.5 hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            >
+                              <Undo size={15} className="text-textMuted" /> Rollback
+                            </button>
+                          </div>
                         </div>
 
                         {/* Progress Bar */}
@@ -825,9 +877,8 @@ const EMITrackerPage = () => {
 
       {/* Floating Action Toast Alert */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3.5 rounded-xl border shadow-xl animate-fadeIn ${
-          toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
-        }`}>
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3.5 rounded-xl border shadow-xl animate-fadeIn ${toast.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-rose-50 border-rose-200 text-rose-800'
+          }`}>
           {toast.type === 'success' ? <CheckCircle2 size={16} className="text-emerald-500 shrink-0" /> : <AlertCircle size={16} className="text-rose-500 shrink-0" />}
           <span className="text-xs font-extrabold">{toast.message}</span>
         </div>

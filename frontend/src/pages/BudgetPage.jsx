@@ -245,10 +245,16 @@ const BudgetPage = () => {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [saveError, setSaveError] = useState('');
   const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [activeTemplate, setActiveTemplate] = useState(null);
 
   const fetchTemplates = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/templates');
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/templates', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         setSavedTemplates(data);
@@ -276,9 +282,13 @@ const BudgetPage = () => {
           setSavedTemplates([legacyTemp]);
           localStorage.setItem('budgetTemplates', JSON.stringify([legacyTemp]));
           // Try to sync with backend as well
+          const token = localStorage.getItem('token');
           fetch('http://localhost:5000/api/templates', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify(legacyTemp)
           }).catch(() => {});
         } catch (e) {}
@@ -319,12 +329,17 @@ const BudgetPage = () => {
     
     setSavedTemplates(newSaved);
     localStorage.setItem('budgetTemplates', JSON.stringify(newSaved));
+    setActiveTemplate(newTemplate);
     
     // API Call to save template on backend
     try {
+      const token = localStorage.getItem('token');
       await fetch('http://localhost:5000/api/templates', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(newTemplate)
       });
     } catch (e) {
@@ -336,20 +351,62 @@ const BudgetPage = () => {
     setTimeout(() => setSaveStatus(''), 2000);
   };
 
+  const handleSaveExistingTemplate = async () => {
+    if (!activeTemplate) return;
+
+    const updatedTemplate = {
+      id: activeTemplate.id,
+      name: activeTemplate.name,
+      income,
+      categories
+    };
+
+    const newSaved = savedTemplates.map(t => t.id === activeTemplate.id ? updatedTemplate : t);
+    setSavedTemplates(newSaved);
+    localStorage.setItem('budgetTemplates', JSON.stringify(newSaved));
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/templates', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updatedTemplate)
+      });
+      if (response.ok) {
+        setActiveTemplate(updatedTemplate);
+        setSaveStatus('Saved!');
+        setTimeout(() => setSaveStatus(''), 2000);
+      }
+    } catch (e) {
+      console.error('Failed to save template to backend:', e);
+    }
+  };
+
   const loadTemplate = (template) => {
     if (template.categories) setCategories(template.categories);
     if (template.income) setIncome(template.income);
+    setActiveTemplate(template);
   };
 
   const deleteTemplate = async (id) => {
     const newSaved = savedTemplates.filter(t => t.id !== id);
     setSavedTemplates(newSaved);
     localStorage.setItem('budgetTemplates', JSON.stringify(newSaved));
+    if (activeTemplate && activeTemplate.id === id) {
+      setActiveTemplate(null);
+    }
 
     // API Call to delete template from backend
     try {
+      const token = localStorage.getItem('token');
       await fetch(`http://localhost:5000/api/templates/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
     } catch (e) {
       console.error('Failed to delete template from backend:', e);
@@ -495,7 +552,14 @@ const BudgetPage = () => {
         <div className="p-6 md:p-8 overflow-y-auto max-w-6xl mx-auto w-full">
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Budget Planner</h2>
+              <h2 className="text-2xl font-bold mb-1 flex items-center flex-wrap gap-2">
+                Budget Planner 
+                {activeTemplate && (
+                  <span className="text-xs font-bold text-primary bg-primaryLight border border-primary/20 px-2.5 py-1 rounded-full animate-fadeIn">
+                    Active: {activeTemplate.name}
+                  </span>
+                )}
+              </h2>
               <p className="text-textMuted text-sm">Allocate your monthly income into customizable percentage-based categories.</p>
             </div>
             <div className="bg-white p-3 rounded-xl border border-borderLight shadow-sm flex items-center gap-3">
@@ -536,11 +600,35 @@ const BudgetPage = () => {
               <div className="bg-white p-6 rounded-2xl border border-borderLight shadow-sm">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                   <h3 className="font-bold text-lg">Allocation Rules</h3>
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    <button onClick={handleSaveTemplate} className="flex-1 sm:flex-none text-sm bg-white border border-gray-200 text-textDark hover:bg-gray-50 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
-                      <Save size={16} className={saveStatus ? "text-success" : "text-textMuted"} /> 
-                      <span className={saveStatus ? "text-success" : ""}>{saveStatus || 'Save Template'}</span>
-                    </button>
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    {activeTemplate ? (
+                      <>
+                        <button 
+                          onClick={handleSaveExistingTemplate} 
+                          className="flex-1 sm:flex-none text-sm bg-white border border-gray-200 text-textDark hover:bg-gray-50 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm"
+                          title={`Save changes to ${activeTemplate.name}`}
+                        >
+                          <Save size={16} className={saveStatus ? "text-success" : "text-textMuted"} /> 
+                          <span className={saveStatus ? "text-success" : ""}>{saveStatus || 'Save to Existing Template'}</span>
+                        </button>
+                        <button 
+                          onClick={handleSaveTemplate} 
+                          className="flex-1 sm:flex-none text-sm bg-white border border-gray-200 text-textDark hover:bg-gray-50 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm"
+                          title="Save as a new template"
+                        >
+                          <Plus size={16} className="text-textMuted" /> 
+                          <span>Save in New Template</span>
+                        </button>
+                      </>
+                    ) : (
+                      <button 
+                        onClick={handleSaveTemplate} 
+                        className="flex-1 sm:flex-none text-sm bg-white border border-gray-200 text-textDark hover:bg-gray-50 px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        <Save size={16} className={saveStatus ? "text-success" : "text-textMuted"} /> 
+                        <span className={saveStatus ? "text-success" : ""}>{saveStatus || 'Save Template'}</span>
+                      </button>
+                    )}
                     <button onClick={handleAddCategory} className="flex-1 sm:flex-none text-sm bg-primaryLight text-primary hover:bg-primary hover:text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
                       <Plus size={16} /> Add Category
                     </button>
@@ -671,7 +759,7 @@ const BudgetPage = () => {
             <div className="p-6 border-b border-borderLight flex justify-between items-center">
               <h3 className="font-bold text-lg text-darkNavy flex items-center gap-2">
                 <Save size={20} className="text-primary" />
-                Save Budget Template
+                Save in New Template
               </h3>
               <button 
                 onClick={() => setShowSaveModal(false)}
@@ -721,7 +809,7 @@ const BudgetPage = () => {
                 disabled={!newTemplateName.trim()}
                 className="px-5 py-2.5 text-sm font-semibold bg-primary text-white hover:bg-orange-600 rounded-xl transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Template
+                Save in New Template
               </button>
             </div>
           </div>

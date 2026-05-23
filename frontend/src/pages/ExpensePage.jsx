@@ -112,7 +112,12 @@ const ExpensePage = () => {
   useEffect(() => {
     const fetchTemplates = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/templates');
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5000/api/templates', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           setSavedTemplates(data);
@@ -185,99 +190,100 @@ const ExpensePage = () => {
     currentBudget = activeTemplate.income || 30000;
   }
 
-  const [expenses, setExpenses] = useState(() => {
-    const saved = localStorage.getItem('expenseLogs');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [expenses, setExpenses] = useState([]);
+
+  const fetchExpenses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/expenses', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExpenses(data);
+        localStorage.setItem('expenseLogs', JSON.stringify(data));
+      }
+    } catch (e) {
+      console.error('Failed to fetch expenses from backend', e);
+      const saved = localStorage.getItem('expenseLogs');
+      if (saved) {
+        try {
+          setExpenses(JSON.parse(saved));
+        } catch (err) {}
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
   
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
   
-  const [currentMonth, setCurrentMonth] = useState(() => {
-    return localStorage.getItem('expenseCurrentMonth') || 'May 2026';
-  });
-  const [lastMonthReport, setLastMonthReport] = useState(() => {
-    const saved = localStorage.getItem('expenseLastMonthReport');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object' && !('month' in parsed)) {
-          return parsed;
-        }
-      } catch (e) {}
-    }
-    return {};
-  });
-
   useEffect(() => {
     localStorage.setItem('expenseLogs', JSON.stringify(expenses));
   }, [expenses]);
 
-  useEffect(() => {
-    localStorage.setItem('expenseCurrentMonth', currentMonth);
-  }, [currentMonth]);
 
-  useEffect(() => {
-    localStorage.setItem('expenseLastMonthReport', JSON.stringify(lastMonthReport));
-  }, [lastMonthReport]);
 
-  const handleRefreshMonth = () => {
-    const report = {
-      month: currentMonth,
-      totalSpent: totalExpenses,
-      budget: currentBudget,
-      saved: currentBudget - totalExpenses
-    };
-    
-    setLastMonthReport(prev => ({
-      ...prev,
-      [activeTemplateId]: report
-    }));
-    
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const parts = currentMonth.split(' ');
-    let mIndex = months.findIndex(m => currentMonth.startsWith(m));
-    let year = parseInt(parts[1] || '2026');
-    if (mIndex === -1) mIndex = 4;
-    
-    if (mIndex === 11) {
-      mIndex = 0;
-      year += 1;
-    } else {
-      mIndex += 1;
-    }
-    setCurrentMonth(`${months[mIndex]} ${year}`);
-    // Clear only the expenses for the active template
-    setExpenses(expenses.filter(e => e.templateId !== activeTemplateId));
-  };
-
-  const handleAddExpense = (e) => {
+  const handleAddExpense = async (e) => {
     e.preventDefault();
     if (newName && newAmount && activeCategoryId && activeTemplateId) {
-      setExpenses([
-        ...expenses,
-        { 
-          id: Date.now(), 
-          name: newName, 
-          amount: parseFloat(newAmount), 
-          categoryId: activeCategoryId,
-          templateId: activeTemplateId
-        }
-      ]);
+      const newExpense = { 
+        id: String(Date.now()), 
+        name: newName, 
+        amount: parseFloat(newAmount), 
+        categoryId: activeCategoryId,
+        templateId: activeTemplateId
+      };
+
+      const updatedExpenses = [...expenses, newExpense];
+      setExpenses(updatedExpenses);
+      localStorage.setItem('expenseLogs', JSON.stringify(updatedExpenses));
       setNewName('');
       setNewAmount('');
+
+      try {
+        const token = localStorage.getItem('token');
+        await fetch('http://localhost:5000/api/expenses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(newExpense)
+        });
+      } catch (err) {
+        console.error('Failed to save expense to database:', err);
+      }
     }
   };
 
-  const removeExpense = (id) => {
-    setExpenses(expenses.filter(e => e.id !== id));
+  const removeExpense = async (id) => {
+    const updatedExpenses = expenses.filter(e => e.id !== id);
+    setExpenses(updatedExpenses);
+    localStorage.setItem('expenseLogs', JSON.stringify(updatedExpenses));
+
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`http://localhost:5000/api/expenses/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (err) {
+      console.error('Failed to delete expense from database:', err);
+    }
   };
 
   const filteredExpenses = expenses.filter(e => e.categoryId === activeCategoryId && e.templateId === activeTemplateId);
   const totalExpenses = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
   const budgetRemaining = currentBudget - totalExpenses;
   const budgetPercent = Math.min((totalExpenses / currentBudget) * 100, 100);
-  const activeReport = lastMonthReport[activeTemplateId];
 
   return (
     <div className="min-h-screen bg-background flex text-textDark font-sans">
@@ -366,7 +372,7 @@ const ExpensePage = () => {
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
               <h2 className="text-2xl font-bold mb-1">Expense Tracker</h2>
-              <p className="text-textMuted text-sm">Manage and track your daily expenses against your budget.</p>
+              <p className="text-textMuted text-sm">Manage and track your daily expenses against your budget for {now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}.</p>
             </div>
             
             {savedTemplates.length > 0 && (
@@ -613,56 +619,6 @@ const ExpensePage = () => {
                 </div>
               </div>
               
-              <div className="bg-white p-6 rounded-2xl border border-borderLight shadow-sm">
-                <h3 className="font-bold mb-4">Quick Insights</h3>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shrink-0 mt-0.5">
-                      <Bell size={14} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Budget Tracking</p>
-                      <p className="text-xs text-textMuted mt-0.5">You are currently {budgetRemaining >= 0 ? 'under' : 'over'} budget. Keep tracking expenses daily.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Month Management */}
-              <div className="bg-white p-6 rounded-2xl border border-borderLight shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold">Monthly Refresh</h3>
-                  <span className="text-xs font-bold text-primary bg-orange-100 px-2 py-1 rounded">{currentMonth}</span>
-                </div>
-                <button 
-                  onClick={handleRefreshMonth}
-                  className="w-full bg-slate-50 hover:bg-slate-100 border border-borderLight text-textDark px-4 py-3 rounded-xl font-semibold text-sm transition-colors mb-4 flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <RefreshCw size={16} /> End & Refresh Month
-                </button>
-                
-                {activeReport && (
-                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                    <h4 className="font-semibold text-sm mb-3 text-darkNavy">Report: {activeReport.month}</h4>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-textMuted">Budget:</span>
-                        <span className="font-medium text-darkNavy">₹{activeReport.budget.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-textMuted">Total Spent:</span>
-                        <span className="font-medium text-darkNavy">₹{activeReport.totalSpent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                      </div>
-                      <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
-                        <span className="font-medium text-darkNavy">Amount Saved:</span>
-                        <span className={`font-bold ${activeReport.saved >= 0 ? 'text-success' : 'text-danger'}`}>
-                          {activeReport.saved >= 0 ? '+' : '-'}₹{Math.abs(activeReport.saved).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>
