@@ -68,12 +68,7 @@ const ExpenseHistoryPage = () => {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Form for Backdated Expense
-  const [formName, setFormName] = useState('');
-  const [formAmount, setFormAmount] = useState('');
-  const [formCategoryId, setFormCategoryId] = useState('');
-  const [formTemplateId, setFormTemplateId] = useState('');
-  const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -136,17 +131,8 @@ const ExpenseHistoryPage = () => {
           if (savedTplId) {
             const parsedId = JSON.parse(savedTplId);
             setActiveTemplateId(parsedId);
-            setFormTemplateId(parsedId);
-            const activeTpl = data.find(t => t.id === parsedId);
-            if (activeTpl && activeTpl.categories && activeTpl.categories.length > 0) {
-              setFormCategoryId(activeTpl.categories[0].id);
-            }
           } else if (data.length > 0) {
             setActiveTemplateId(data[0].id);
-            setFormTemplateId(data[0].id);
-            if (data[0].categories && data[0].categories.length > 0) {
-              setFormCategoryId(data[0].categories[0].id);
-            }
           }
           localStorage.setItem('budgetTemplates', JSON.stringify(data));
         }
@@ -159,10 +145,6 @@ const ExpenseHistoryPage = () => {
             setSavedTemplates(parsed);
             if (parsed.length > 0) {
               setActiveTemplateId(parsed[0].id);
-              setFormTemplateId(parsed[0].id);
-              if (parsed[0].categories && parsed[0].categories.length > 0) {
-                setFormCategoryId(parsed[0].categories[0].id);
-              }
             }
           } catch (err) {}
         }
@@ -175,12 +157,7 @@ const ExpenseHistoryPage = () => {
   const activeTemplate = savedTemplates.find(t => t.id === activeTemplateId);
   const activeCategories = activeTemplate?.categories || [];
 
-  // Update categories form select value whenever template changes
-  useEffect(() => {
-    if (activeTemplate && activeTemplate.categories && activeTemplate.categories.length > 0) {
-      setFormCategoryId(activeTemplate.categories[0].id);
-    }
-  }, [activeTemplateId, savedTemplates]);
+
 
   // Fetch Expenses
   const fetchExpenses = async () => {
@@ -214,41 +191,7 @@ const ExpenseHistoryPage = () => {
     fetchExpenses();
   }, []);
 
-  // Handle Add Backdated Expense
-  const handleAddPastExpense = async (e) => {
-    e.preventDefault();
-    if (formName && formAmount && formCategoryId && formTemplateId && formDate) {
-      const parsedDate = new Date(formDate);
-      const newExpense = { 
-        id: String(Date.now()), 
-        name: formName ? formName.charAt(0).toUpperCase() + formName.slice(1) : '', 
-        amount: parseFloat(formAmount), 
-        categoryId: parseInt(formCategoryId),
-        templateId: parseInt(formTemplateId),
-        date: parsedDate.toISOString()
-      };
 
-      const updatedExpenses = [...expenses, newExpense];
-      setExpenses(updatedExpenses);
-      localStorage.setItem('expenseLogs', JSON.stringify(updatedExpenses));
-      setFormName('');
-      setFormAmount('');
-
-      try {
-        const token = localStorage.getItem('token');
-        await fetch('http://localhost:5000/api/expenses', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(newExpense)
-        });
-      } catch (err) {
-        console.error('Failed to save expense:', err);
-      }
-    }
-  };
 
   // Remove Expense
   const removeExpense = async (id) => {
@@ -269,84 +212,7 @@ const ExpenseHistoryPage = () => {
     }
   };
 
-  // Seeding realistic past expenses for visualization
-  const generateSeedData = async () => {
-    if (!activeTemplateId || activeCategories.length === 0) return;
-    
-    // Generate realistic expenses for the past 4 months (e.g. Feb, Mar, Apr, May of current year)
-    const seedExpenses = [];
-    const nowRef = new Date();
-    
-    const descriptions = {
-      "Food": ["Uber Eats", "Zomato Dineout", "Spencers Grocery", "Cafe Coffee Day", "Pizza Hut", "Supermarket Veggies"],
-      "Entertainment": ["Netflix Subscription", "Movie Tickets", "Spotify Premium", "Bowling Lounge", "Gaming Zone"],
-      "Rent": ["Monthly Rent payment"],
-      "Utilities": ["Electricity Bill", "Broadband Internet", "Gas Cylinder Refill", "Mobile Recharge"],
-      "Shopping": ["Amazon Fashion Store", "Zara Jeans", "Nike Running Shoes", "Local Mall Shopping"],
-      "Investments": ["Nifty Index Mutual Fund", "SIP Contribution", "Stocks Buy", "Gold ETF Purchase"],
-      "Transport": ["Uber Cab Fare", "Petrol Pump Refill", "Metro Card Recharge", "Auto Rickshaw Pay"],
-      "Bills": ["Electricity Bill", "Phone Postpaid", "Water Utility Tax"]
-    };
 
-    const token = localStorage.getItem('token');
-    
-    for (let monthOffset = 0; monthOffset < 4; monthOffset++) {
-      const seedMonth = new Date(nowRef.getFullYear(), nowRef.getMonth() - monthOffset, 15);
-      
-      activeCategories.forEach((cat) => {
-        // Budget allocated for this category
-        const catBudget = (activeTemplate.income * (cat.percentage || 10)) / 100;
-        
-        // Let's generate 2-4 transactions per category in past months
-        const txCount = Math.floor(Math.random() * 3) + 2; 
-        for (let i = 0; i < txCount; i++) {
-          const catNames = descriptions[cat.name] || ["General Purchase", "Utility Spend", "Miscellaneous Bill"];
-          const name = catNames[Math.floor(Math.random() * catNames.length)];
-          
-          // Random date within that month
-          const randomDay = Math.floor(Math.random() * 25) + 1;
-          const txDate = new Date(seedMonth.getFullYear(), seedMonth.getMonth(), randomDay);
-          
-          // Total amount shouldn't exceed budget
-          const maxTxVal = (catBudget / txCount) * 1.1;
-          const amount = parseFloat((Math.random() * maxTxVal + 150).toFixed(2));
-          
-          const uniqueId = `seed-${cat.id}-${txDate.getTime()}-${Math.floor(Math.random() * 1000)}`;
-          
-          seedExpenses.push({
-            id: uniqueId,
-            name,
-            amount,
-            categoryId: cat.id,
-            templateId: activeTemplateId,
-            date: txDate.toISOString()
-          });
-        }
-      });
-    }
-
-    // Update state & store locally
-    const merged = [...expenses, ...seedExpenses];
-    setExpenses(merged);
-    localStorage.setItem('expenseLogs', JSON.stringify(merged));
-
-    // Upload to database
-    try {
-      for (const item of seedExpenses) {
-        await fetch('http://localhost:5000/api/expenses', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(item)
-        });
-      }
-      fetchExpenses(); // Reload
-    } catch (e) {
-      console.error('Error uploading seed data', e);
-    }
-  };
 
   // Helper function to extract date from expense object
   const getExpenseDate = (exp) => {
@@ -640,15 +506,6 @@ const ExpenseHistoryPage = () => {
                 </div>
               )}
 
-              {/* Quick Seed Button to Help Seeding */}
-              <button 
-                onClick={generateSeedData}
-                className="px-4 py-2.5 bg-slate-900 text-white rounded-xl font-semibold text-xs transition-all flex items-center gap-2 hover:bg-slate-800 shadow-sm border border-slate-800"
-                title="Generates 4 months of realistic history"
-              >
-                <Sparkles size={14} className="text-primary" />
-                <span>Seed Sample History</span>
-              </button>
             </div>
           </div>
 
@@ -804,185 +661,7 @@ const ExpenseHistoryPage = () => {
             </div>
           </div>
 
-          {/* Grid Layout: Visual Chart & Seeding */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
-            {/* Chart Area: 6 Month Spending Trend */}
-            <div className="lg:col-span-2 bg-white border border-borderLight rounded-2xl p-6 shadow-sm flex flex-col justify-between min-h-[300px]">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="font-bold text-darkNavy text-base leading-none">6-Month Spending Trend</h3>
-                  <p className="text-xs text-textMuted mt-1">Visualizing overall spending trends for your active template</p>
-                </div>
-                <span className="text-xs font-bold text-primary bg-primaryLight px-2.5 py-1 rounded-full uppercase tracking-wider">
-                  Visual History
-                </span>
-              </div>
-
-              {chartData.length > 0 && maxChartValue > 1000 ? (
-                <div className="flex-1 flex flex-col justify-end">
-                  <div className="relative w-full h-[150px] overflow-hidden">
-                    <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
-                      <defs>
-                        <linearGradient id="history-grad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f97316" stopOpacity="0.4" />
-                          <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
-                        </linearGradient>
-                      </defs>
-                      
-                      {/* Grid Lines */}
-                      <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1={paddingX} y1={svgHeight / 2} x2={svgWidth - paddingX} y2={svgHeight / 2} stroke="#f1f5f9" strokeWidth="1" />
-                      <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4" />
-
-                      {/* Area Under Line */}
-                      {chartData.length > 1 && (
-                        <polygon points={areaPoints} fill="url(#history-grad)" stroke="none" />
-                      )}
-
-                      {/* Line */}
-                      {chartData.length > 1 && (
-                        <polyline
-                          fill="none"
-                          stroke="#f97316"
-                          strokeWidth="3"
-                          points={points}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      )}
-
-                      {/* Data Dots */}
-                      {chartData.map((data, index) => {
-                        const x = paddingX + (index * (svgWidth - paddingX * 2)) / (chartData.length - 1);
-                        const y = svgHeight - paddingY - (data.value / maxChartValue) * (svgHeight - paddingY * 2);
-                        const isSelectedMonth = data.month === selectedMonth && data.year === selectedYear;
-
-                        return (
-                          <g key={index}>
-                            <circle
-                              cx={x}
-                              cy={y}
-                              r={isSelectedMonth ? "6" : "4"}
-                              fill={isSelectedMonth ? "#f97316" : "#ffffff"}
-                              stroke="#f97316"
-                              strokeWidth={isSelectedMonth ? "3" : "2"}
-                              className="transition-all duration-300"
-                            />
-                            <text
-                              x={x}
-                              y={y - 10}
-                              textAnchor="middle"
-                              className="text-[9px] font-bold fill-darkNavy"
-                            >
-                              ₹{Math.round(data.value).toLocaleString()}
-                            </text>
-                          </g>
-                        );
-                      })}
-                    </svg>
-                  </div>
-                  
-                  {/* Chart X Labels */}
-                  <div className="flex justify-between px-[40px] pt-2 border-t border-slate-50 mt-1">
-                    {chartData.map((data, index) => (
-                      <div key={index} className="text-center">
-                        <button
-                          onClick={() => {
-                            setSelectedMonth(data.month);
-                            setSelectedYear(data.year);
-                          }}
-                          className={`text-[10px] font-bold block uppercase tracking-wider hover:text-primary transition-colors ${data.month === selectedMonth && data.year === selectedYear ? 'text-primary font-extrabold' : 'text-textMuted'}`}
-                        >
-                          {data.label}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex items-center justify-center text-textMuted">
-                  <RefreshCw size={24} className="animate-spin text-primary" />
-                </div>
-              )}
-            </div>
-
-            {/* Backdate Simulator Form */}
-            <div className="bg-white border border-borderLight rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-              <div>
-                <h3 className="font-bold text-darkNavy text-base leading-none mb-1">Add Past Expense</h3>
-                <p className="text-xs text-textMuted mb-4">Simulator to log an expense for a specific date in the past.</p>
-                
-                {activeCategories.length === 0 ? (
-                  <p className="text-xs text-danger">No active template categories. Please select a template.</p>
-                ) : (
-                  <form onSubmit={handleAddPastExpense} className="space-y-3.5">
-                    <div>
-                      <label className="block text-[10px] font-bold text-textMuted uppercase mb-1">Expense Name</label>
-                      <input 
-                        type="text"
-                        placeholder="e.g. Cinema Tickets"
-                        value={formName}
-                        onChange={(e) => setFormName(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-medium"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[10px] font-bold text-textMuted uppercase mb-1">Amount (₹)</label>
-                        <input 
-                          type="number"
-                          placeholder="0"
-                          value={formAmount}
-                          onChange={(e) => setFormAmount(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold"
-                          required
-                          min="1"
-                          step="0.01"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-textMuted uppercase mb-1">Date</label>
-                        <input 
-                          type="date"
-                          value={formDate}
-                          onChange={(e) => setFormDate(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-textMuted uppercase mb-1">Category</label>
-                      <select
-                        value={formCategoryId}
-                        onChange={(e) => setFormCategoryId(e.target.value)}
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold"
-                        required
-                      >
-                        {activeCategories.map(c => (
-                          <option key={c.id} value={c.id}>{c.name} ({c.percentage}%)</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <button 
-                      type="submit" 
-                      className="w-full bg-primary hover:bg-orange-600 text-white py-2.5 rounded-xl font-bold text-xs transition-colors shadow-sm shadow-orange-500/10 whitespace-nowrap"
-                    >
-                      Log Historical Expense
-                    </button>
-                  </form>
-                )}
-              </div>
-            </div>
-
-          </div>
-
-          {/* Lower Section: Expenses List Table & Category Breakdown */}
+          {/* Upper Section: Expenses List Table & Category Breakdown */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Record List Table */}
@@ -1011,7 +690,7 @@ const ExpenseHistoryPage = () => {
                 <div className="flex-1 flex flex-col items-center justify-center text-textMuted py-16 text-center">
                   <CalendarDays size={48} className="mb-4 text-slate-200" />
                   <h4 className="font-bold text-darkNavy text-sm mb-1">No historical data found</h4>
-                  <p className="text-xs max-w-[280px] leading-relaxed">No expenses are recorded in this specific category or month. Use the simulator or seed data generator to populate.</p>
+                  <p className="text-xs max-w-[280px] leading-relaxed">No expenses are recorded in this specific category or month.</p>
                 </div>
               ) : (
                 <div className="flex-1 overflow-x-auto">
@@ -1109,6 +788,106 @@ const ExpenseHistoryPage = () => {
               </div>
             </div>
 
+          </div>
+
+          {/* Lower Section: 6-Month Spending Trend */}
+          <div className="bg-white border border-borderLight rounded-2xl p-6 shadow-sm flex flex-col justify-between min-h-[300px] w-full">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-bold text-darkNavy text-base leading-none">6-Month Spending Trend</h3>
+                <p className="text-xs text-textMuted mt-1">Visualizing overall spending trends for your active template</p>
+              </div>
+              <span className="text-xs font-bold text-primary bg-primaryLight px-2.5 py-1 rounded-full uppercase tracking-wider">
+                Visual History
+              </span>
+            </div>
+
+            {chartData.length > 0 && maxChartValue > 1000 ? (
+              <div className="flex-1 flex flex-col justify-end">
+                <div className="relative w-full h-[150px] overflow-hidden">
+                  <svg viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="w-full h-full overflow-visible">
+                    <defs>
+                      <linearGradient id="history-grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f97316" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#f97316" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    
+                    {/* Grid Lines */}
+                    <line x1={paddingX} y1={paddingY} x2={svgWidth - paddingX} y2={paddingY} stroke="#f1f5f9" strokeWidth="1" />
+                    <line x1={paddingX} y1={svgHeight / 2} x2={svgWidth - paddingX} y2={svgHeight / 2} stroke="#f1f5f9" strokeWidth="1" />
+                    <line x1={paddingX} y1={svgHeight - paddingY} x2={svgWidth - paddingX} y2={svgHeight - paddingY} stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4" />
+
+                    {/* Area Under Line */}
+                    {chartData.length > 1 && (
+                      <polygon points={areaPoints} fill="url(#history-grad)" stroke="none" />
+                    )}
+
+                    {/* Line */}
+                    {chartData.length > 1 && (
+                      <polyline
+                        fill="none"
+                        stroke="#f97316"
+                        strokeWidth="3"
+                        points={points}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+
+                    {/* Data Dots */}
+                    {chartData.map((data, index) => {
+                      const x = paddingX + (index * (svgWidth - paddingX * 2)) / (chartData.length - 1);
+                      const y = svgHeight - paddingY - (data.value / maxChartValue) * (svgHeight - paddingY * 2);
+                      const isSelectedMonth = data.month === selectedMonth && data.year === selectedYear;
+
+                      return (
+                        <g key={index}>
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r={isSelectedMonth ? "6" : "4"}
+                            fill={isSelectedMonth ? "#f97316" : "#ffffff"}
+                            stroke="#f97316"
+                            strokeWidth={isSelectedMonth ? "3" : "2"}
+                            className="transition-all duration-300"
+                          />
+                          <text
+                            x={x}
+                            y={y - 10}
+                            textAnchor="middle"
+                            className="text-[9px] font-bold fill-darkNavy"
+                          >
+                            ₹{Math.round(data.value).toLocaleString()}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+                
+                {/* Chart X Labels */}
+                <div className="flex justify-between px-[40px] pt-2 border-t border-slate-50 mt-1">
+                  {chartData.map((data, index) => (
+                    <div key={index} className="text-center">
+                      <button
+                        onClick={() => {
+                          setSelectedMonth(data.month);
+                          setSelectedYear(data.year);
+                        }}
+                        className={`text-[10px] font-bold block uppercase tracking-wider hover:text-primary transition-colors ${data.month === selectedMonth && data.year === selectedYear ? 'text-primary font-extrabold' : 'text-textMuted'}`}
+                      >
+                        {data.label}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-textMuted">
+                <RefreshCw size={24} className="animate-spin text-primary" />
+              </div>
+            )}
           </div>
 
         </div>

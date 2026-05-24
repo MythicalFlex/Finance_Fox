@@ -106,7 +106,9 @@ const AIAssistantPage = () => {
 
   // Auto Scroll Chat
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatHistory.length > 1 || aiTyping) {
+      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [chatHistory, aiTyping]);
 
   // Fetch verified user metrics from DB to display alongside

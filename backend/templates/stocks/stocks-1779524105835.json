@@ -1,0 +1,16 @@
+[
+  {
+    "symbol": "TCS",
+    "name": "Tata Consultancy Services",
+    "price": 3600,
+    "sector": "Technology",
+    "quantity": 1
+  },
+  {
+    "symbol": "KOTAKBANK",
+    "name": "Kotak Mahindra Bank",
+    "price": 1780,
+    "sector": "Finance",
+    "quantity": 1
+  }
+]
