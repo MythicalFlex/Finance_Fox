@@ -1,3 +1,11 @@
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+} catch (e) {
+  console.warn("Could not set custom DNS servers:", e.message);
+}
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
