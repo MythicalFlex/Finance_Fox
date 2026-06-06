@@ -10,25 +10,30 @@
     -moz-osx-font-smoothing: grayscale;
     font-family: 'Inter', sans-serif;
   }
-}
 
-/* Custom scrollbar for better UI */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+  /* Custom scrollbar for better UI (Cross-browser support) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
 
-::-webkit-scrollbar-track {
-  background: transparent; 
-}
- 
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1; 
-  border-radius: 10px;
-}
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8; 
+  ::-webkit-scrollbar-track {
+    background: transparent; 
+  }
+   
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; 
+  }
 }
 
 @layer utilities {
@@ -39,36 +44,52 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-}
 
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
+  /* Custom Animations and Keyframes */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
   }
-  100% {
-    transform: translateX(100%);
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.08);
+    }
   }
-}
 
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 0.5;
-    transform: scale(1);
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-  50% {
-    opacity: 0.9;
-    transform: scale(1.08);
+
+  .animate-shimmer {
+    animation: shimmer 2.2s infinite ease-in-out;
   }
-}
 
-.animate-shimmer {
-  animation: shimmer 2.2s infinite ease-in-out;
-}
+  .animate-pulse-glow {
+    animation: pulse-glow 4s infinite ease-in-out;
+  }
 
-.animate-pulse-glow {
-  animation: pulse-glow 4s infinite ease-in-out;
-}
+  .animate-spin-slow {
+    animation: spin 10s linear infinite;
+  }
 
-.animate-spin-slow {
-  animation: spin 10s linear infinite;
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out forwards;
+  }
 }

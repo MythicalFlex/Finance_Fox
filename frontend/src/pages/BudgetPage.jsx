@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { 
   List, Bell, Plus, Trash2, Home, Heart, Briefcase, TrendingUp, IndianRupee, AlertCircle, Edit2, Check, Save, X,
-  FileText, Sparkles, PieChart as PieChartIcon, Calculator
+  FileText, PieChart as PieChartIcon, Calculator
 } from 'lucide-react';
+import AIAssistantDrawer from '../components/AIAssistantDrawer';
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
   <button 
@@ -491,7 +492,6 @@ const BudgetPage = () => {
               <SidebarItem dotColor="bg-gray-200" label="Overview" onClick={() => navigate('/dashboard')} icon={Home} />
               <SidebarItem dotColor="bg-gray-200" label="Expenses" onClick={() => navigate('/expenses')} icon={List} />
               <SidebarItem dotColor="bg-gray-200" label="Expense History" onClick={() => navigate('/expense-history')} icon={FileText} />
-              <SidebarItem dotColor="bg-gray-200" label="AI Assistant" onClick={() => navigate('/ai-assistant')} icon={Sparkles} />
               <SidebarItem dotColor="bg-primary" label="Budget" active icon={PieChartIcon} />
               <SidebarItem dotColor="bg-gray-200" label="Stocks" onClick={() => navigate('/stocks')} icon={TrendingUp} />
             </div>
@@ -868,6 +868,7 @@ const BudgetPage = () => {
           </div>
         </div>
       )}
+      <AIAssistantDrawer />
     </div>
   );
 };

@@ -10,13 +10,13 @@ import {
   ChevronDown,
   Home,
   FileText,
-  Sparkles,
   PieChart,
   TrendingUp,
   Calculator,
   AlertCircle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import AIAssistantDrawer from '../components/AIAssistantDrawer';
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
   <button 
@@ -311,7 +311,6 @@ const ExpensePage = () => {
               <SidebarItem dotColor="bg-gray-200" label="Overview" onClick={() => navigate('/dashboard')} icon={Home} />
               <SidebarItem dotColor="bg-primary" label="Expenses" active icon={List} />
               <SidebarItem dotColor="bg-gray-200" label="Expense History" onClick={() => navigate('/expense-history')} icon={FileText} />
-              <SidebarItem dotColor="bg-gray-200" label="AI Assistant" onClick={() => navigate('/ai-assistant')} icon={Sparkles} />
               <SidebarItem dotColor="bg-gray-200" label="Budget" onClick={() => navigate('/budget')} icon={PieChart} />
               <SidebarItem dotColor="bg-gray-200" label="Stocks" onClick={() => navigate('/stocks')} icon={TrendingUp} />
             </div>
@@ -625,11 +624,11 @@ const ExpensePage = () => {
                   </div>
                 </div>
               </div>
-              
             </div>
           </div>
         </div>
       </main>
+      <AIAssistantDrawer />
     </div>
   );
 };
