@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AIAssistantDrawer from '../components/AIAssistantDrawer';
 import {
   Home,
   List,
@@ -26,6 +27,36 @@ import {
   Sparkles,
   CheckCircle
 } from 'lucide-react';
+
+const STOCKS_POOL = [
+  { symbol: 'MARUTI', name: 'Maruti Suzuki India', price: 11200, sector: 'Automotive' },
+  { symbol: 'ULTRACEMCO', name: 'UltraTech Cement', price: 9600, sector: 'Telecom' },
+  { symbol: 'DRREDDY', name: 'Dr. Reddy\'s Laboratories', price: 6100, sector: 'Healthcare' },
+  { symbol: 'APOLLOHOSP', name: 'Apollo Hospitals', price: 5900, sector: 'Healthcare' },
+  { symbol: 'TCS', name: 'Tata Consultancy Services', price: 3600, sector: 'Technology' },
+  { symbol: 'LT', name: 'Larsen & Toubro Limited', price: 3450, sector: 'Telecom' },
+  { symbol: 'TITAN', name: 'Titan Company', price: 3200, sector: 'Consumer Goods' },
+  { symbol: 'ASIANPAINT', name: 'Asian Paints Limited', price: 2850, sector: 'Consumer Goods' },
+  { symbol: 'RELIANCE', name: 'Reliance Industries', price: 2450, sector: 'Technology' },
+  { symbol: 'HINDUNILVR', name: 'Hindustan Unilever', price: 2350, sector: 'Consumer Goods' },
+  { symbol: 'M&M', name: 'Mahindra & Mahindra', price: 1950, sector: 'Automotive' },
+  { symbol: 'KOTAKBANK', name: 'Kotak Mahindra Bank', price: 1780, sector: 'Finance' },
+  { symbol: 'ADANIGREEN', name: 'Adani Green Energy', price: 1650, sector: 'Energy' },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank Limited', price: 1550, sector: 'Finance' },
+  { symbol: 'SUNPHARMA', name: 'Sun Pharmaceutical', price: 1520, sector: 'Healthcare' },
+  { symbol: 'INFY', name: 'Infosys Limited', price: 1450, sector: 'Technology' },
+  { symbol: 'CIPLA', name: 'Cipla Limited', price: 1350, sector: 'Healthcare' },
+  { symbol: 'BHARTIAIRTEL', name: 'Bharti Airtel Limited', price: 1150, sector: 'Telecom' },
+  { symbol: 'ICICIBANK', name: 'ICICI Bank Limited', price: 980, sector: 'Finance' },
+  { symbol: 'TATAMOTORS', name: 'Tata Motors Limited', price: 920, sector: 'Automotive' },
+  { symbol: 'SBIN', name: 'State Bank of India', price: 610, sector: 'Finance' },
+  { symbol: 'COALINDIA', name: 'Coal India Limited', price: 440, sector: 'Telecom' },
+  { symbol: 'WIPRO', name: 'Wipro Limited', price: 430, sector: 'Technology' },
+  { symbol: 'ITC', name: 'ITC Limited', price: 420, sector: 'Consumer Goods' },
+  { symbol: 'TATAPOWER', name: 'Tata Power Company', price: 380, sector: 'Energy' },
+  { symbol: 'NTPC', name: 'NTPC Limited', price: 320, sector: 'Energy' },
+  { symbol: 'ONGC', name: 'Oil & Natural Gas Corp', price: 230, sector: 'Energy' }
+];
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium ${active ? 'bg-primaryLight text-primary' : 'text-textMuted hover:bg-gray-100'}`}>
@@ -133,22 +164,6 @@ const Dashboard = () => {
   const [calcRate, setCalcRate] = useState(8.5);
   const [calcTenure, setCalcTenure] = useState(10); // Years
 
-  // AI Chatbot States
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'ai', content: "Hello! I am your Finance Fox AI Assistant. Ask me questions like 'Can I buy a laptop for ₹30,000?', 'What is my savings rate?', or 'Am I over budget?' to see the reasoning engine in action!" }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [aiTyping, setAiTyping] = useState(false);
-  const [openReasoningIndex, setOpenReasoningIndex] = useState(null);
-  const chatContainerRef = useRef(null);
-  const chatBottomRef = useRef(null);
-
-  const suggestionChips = [
-    "Can I buy a tablet for ₹15,000?",
-    "What is my savings rate?",
-    "Am I over budget?",
-    "Show my debt load"
-  ];
 
   // Fetch all templates, expenses, and EMIs on page mount
   useEffect(() => {
@@ -370,74 +385,6 @@ const Dashboard = () => {
     }
   }, [calcType, calcPrincipal, calcRate, calcTenure]);
 
-  // AI assistant chat functionality
-  useEffect(() => {
-    if (chatHistory.length > 1 || aiTyping) {
-      chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatHistory, aiTyping]);
-
-  const toggleReasoning = (index) => {
-    setOpenReasoningIndex(openReasoningIndex === index ? null : index);
-  };
-
-  const handleSendChat = async (e) => {
-    if (e) e.preventDefault();
-    if (!chatInput.trim() || aiTyping) return;
-
-    const userText = chatInput.trim();
-    setChatInput('');
-    await executeChat(userText);
-  };
-
-  const handleSendSuggestion = async (text) => {
-    if (aiTyping) return;
-    await executeChat(text);
-  };
-
-  const executeChat = async (textToSend) => {
-    setChatHistory(prev => [...prev, { role: 'user', content: textToSend }]);
-    setAiTyping(true);
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/ai/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ message: textToSend })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setChatHistory(prev => [...prev, {
-          role: 'ai',
-          content: data.explanation,
-          structuredResponse: {
-            intent: data.intent,
-            calculations: data.calculations,
-            structuredAdvice: data.structuredAdvice
-          }
-        }]);
-      } else {
-        const errorData = await response.json();
-        setChatHistory(prev => [...prev, {
-          role: 'ai',
-          content: `Error: ${errorData.error || 'Failed to connect with financial assistant.'}`
-        }]);
-      }
-    } catch (err) {
-      console.error('AI chat fetch error:', err);
-      setChatHistory(prev => [...prev, {
-        role: 'ai',
-        content: "Oops! I encountered an error trying to connect to the server. Please make sure the backend is running."
-      }]);
-    } finally {
-      setAiTyping(false);
-    }
-  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -500,7 +447,6 @@ const Dashboard = () => {
               <SidebarItem dotColor="bg-primary" label="Overview" active icon={Home} />
               <SidebarItem dotColor="bg-gray-200" label="Expenses" onClick={() => navigate('/expenses')} icon={List} />
               <SidebarItem dotColor="bg-gray-200" label="Expense History" onClick={() => navigate('/expense-history')} icon={FileText} />
-              <SidebarItem dotColor="bg-gray-200" label="AI Assistant" onClick={() => navigate('/ai-assistant')} icon={Sparkles} />
               <SidebarItem dotColor="bg-gray-200" label="Budget" onClick={() => navigate('/budget')} icon={PieChart} />
               <SidebarItem dotColor="bg-gray-200" label="Stocks" onClick={() => navigate('/stocks')} icon={TrendingUp} />
             </div>
@@ -794,201 +740,72 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Dynamic Stock Predictions or Assets */}
-            <div className="bg-white p-5 rounded-2xl border border-borderLight shadow-sm flex flex-col justify-between">
+            {/* Fox AI Wealth Insights */}
+            <div className="bg-white p-5 rounded-2xl border border-borderLight shadow-sm flex flex-col justify-between h-[380px]">
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="font-bold text-darkNavy">Stock Signals</h3>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-bold text-darkNavy flex items-center gap-1.5">
+                    <Sparkles size={18} className="text-primary animate-pulse" />
+                    Fox AI Wealth Insights
+                  </h3>
                 </div>
-                <p className="text-[10px] text-textMuted bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 font-semibold mb-4 text-center">
-                  Based on active Investments category splits
-                </p>
-
-                {stocks.length > 0 ? (
-                  <div className="space-y-2.5 max-h-[220px] overflow-y-auto no-scrollbar">
-                    <div className="w-full text-left text-[9px] text-textMuted uppercase font-bold grid grid-cols-12 gap-1 px-1">
-                      <div className="col-span-3">Ticker</div>
-                      <div className="col-span-4 text-center">Shares</div>
-                      <div className="col-span-5 text-right">Value</div>
+                
+                <div className="space-y-3">
+                  <div className="bg-slate-55 bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 flex justify-between items-center">
+                    <div>
+                      <span className="text-[9px] text-textMuted uppercase font-bold tracking-wider block">Savings Surplus</span>
+                      <span className="text-lg font-black text-darkNavy">₹{netSurplus.toLocaleString('en-IN')}</span>
                     </div>
-                    {stocks.map((item, idx) => {
-                      const qty = item.quantity || item.shares || 0;
-                      const prc = item.price || item.buyPrice || 0;
-                      const totalValue = qty * prc;
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${netSurplus > 0 ? 'bg-emerald-55 text-emerald-600 bg-emerald-50' : 'bg-rose-55 text-rose-600 bg-rose-50'}`}>
+                      {netSurplus > 0 ? 'Investable' : 'Deficit'}
+                    </span>
+                  </div>
 
-                      return (
-                        <div key={idx} className="grid grid-cols-12 gap-1 items-center text-xs px-1 py-1.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-100/50 rounded-xl transition-colors">
-                          <div className="col-span-3 font-extrabold text-darkNavy">{item.symbol}</div>
-                          <div className="col-span-4 text-[10px] text-textMuted font-bold text-center">
-                            {qty} shares
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] text-textMuted uppercase font-bold tracking-wider block">Top Stocks for Your Budget</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(() => {
+                        let affordableStocks = STOCKS_POOL.filter(stock => stock.price <= netSurplus);
+                        if (affordableStocks.length === 0) {
+                          affordableStocks = [...STOCKS_POOL].sort((a, b) => a.price - b.price);
+                        } else {
+                          affordableStocks.sort((a, b) => b.price - a.price);
+                        }
+                        return affordableStocks.slice(0, 3).map((stock, idx) => (
+                          <div key={idx} className="bg-slate-55 bg-slate-50/50 border border-slate-100/50 p-2 rounded-xl text-center flex flex-col justify-between">
+                            <span className="font-extrabold text-xs text-darkNavy block">{stock.symbol}</span>
+                            <span className="font-mono text-[10px] text-emerald-600 font-bold block mt-1">₹{stock.price.toLocaleString('en-IN')}</span>
                           </div>
-                          <div className="col-span-5 text-right font-black text-success font-mono text-[11px]">
-                            ₹{totalValue.toLocaleString('en-IN')}
-                          </div>
-                        </div>
-                      );
-                    })}
+                        ));
+                      })()}
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-10 text-textMuted text-xs font-semibold bg-slate-50 border border-dashed rounded-xl px-4 text-center">
-                    <TrendingUp size={28} className="text-slate-300 mb-2 animate-pulse" />
-                    <span className="leading-tight mb-1">No stock assets found for this template</span>
-                    <button onClick={() => navigate('/stocks')} className="text-[9px] text-primary uppercase font-extrabold tracking-wider hover:underline mt-2">
-                      Manage Stocks ↗
-                    </button>
+
+                  <div className="bg-primaryLight/15 p-2.5 rounded-xl border border-primaryLight/40 text-[10px] text-slate-700 font-medium leading-relaxed">
+                    {netSurplus > 0 ? (
+                      `Based on your surplus of ₹${netSurplus.toLocaleString('en-IN')}, you have investable capital! You can invest in high-value stocks like ${(() => {
+                        let affordableStocks = STOCKS_POOL.filter(stock => stock.price <= netSurplus);
+                        if (affordableStocks.length === 0) affordableStocks = [...STOCKS_POOL].sort((a, b) => a.price - b.price);
+                        else affordableStocks.sort((a, b) => b.price - a.price);
+                        return affordableStocks.slice(0, 3).map(s => s.symbol).join(', ');
+                      })()} to grow your wealth.`
+                    ) : (
+                      "You currently do not have a savings surplus. Build up a surplus by lowering expenses or updating your budget template to start investing!"
+                    )}
                   </div>
-                )}
+                </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 text-center flex-shrink-0">
-                <p className="text-[9px] text-textMuted font-semibold leading-tight">
-                  Sentiment analytics update every 24 hours.
-                </p>
-                <p className="text-[9px] text-textMuted font-semibold leading-tight mt-0.5">
-                  Always consult financial advisors before purchasing.
+              <div className="pt-3 border-t border-slate-100 flex-shrink-0">
+                <p className="text-[8px] text-textMuted italic leading-tight text-center">
+                  Investments in securities market are subject to market risks , read all documents carefully before investing
                 </p>
               </div>
             </div>
           </div>
 
           {/* Bottom Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* AI Financial Assistant Chatbot Section */}
-            <div className="bg-white p-5 rounded-2xl border border-borderLight shadow-sm flex flex-col h-[420px] justify-between">
-              <div>
-                <div className="flex justify-between items-center mb-2 border-b border-slate-100 pb-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/ai-assistant')}
-                    className="flex items-center gap-2 text-left hover:text-primary transition-colors cursor-pointer group"
-                  >
-                    <span className="text-base select-none">🦊</span>
-                    <h3 className="font-bold text-darkNavy text-sm group-hover:text-primary transition-colors flex items-center gap-1">
-                      AI Financial Assistant
-                      <span className="text-xs text-textMuted group-hover:text-primary font-normal">↗</span>
-                    </h3>
-                  </button>
-                </div>
-                
-                {/* Chat Messages */}
-                <div ref={chatContainerRef} className="overflow-y-auto max-h-[220px] space-y-3 mb-3 pr-1 text-xs no-scrollbar">
-                  {chatHistory.map((msg, index) => (
-                    <div key={index} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`p-2.5 rounded-xl max-w-[85%] leading-relaxed ${msg.role === 'user' ? 'bg-primary text-white rounded-tr-none font-medium' : 'bg-slate-100 text-textDark rounded-tl-none font-medium'}`}>
-                        {msg.content}
-                      </div>
-                      
-                      {/* Render Collapsible Reasoning Process */}
-                      {msg.role === 'ai' && msg.structuredResponse && (
-                        <div className="mt-2 w-full space-y-2">
-                          <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/50">
-                            <button
-                              type="button"
-                              onClick={() => toggleReasoning(index)}
-                              className="w-full px-3 py-1.5 flex justify-between items-center text-[9px] font-black text-textMuted uppercase hover:bg-slate-100 transition-colors"
-                            >
-                              <span>🔍 Reasoning Process</span>
-                              <span className="font-bold">{openReasoningIndex === index ? 'Hide ▲' : 'Show ▼'}</span>
-                            </button>
-                            
-                            {openReasoningIndex === index && (
-                              <div className="p-3 border-t border-slate-150 text-[11px] space-y-2 bg-white text-textMuted font-semibold animate-fadeIn">
-                                <div>
-                                  <span className="text-[8px] font-extrabold text-gray-400 uppercase tracking-wider block mb-0.5">Intent</span>
-                                  <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full font-black text-[9px] uppercase">
-                                    {msg.structuredResponse.intent}
-                                  </span>
-                                </div>
-                                
-                                <div>
-                                  <span className="text-[8px] font-extrabold text-gray-400 uppercase tracking-wider block mb-0.5">Profile Data Fetched</span>
-                                  <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 font-mono text-[9px] bg-slate-50 p-1.5 rounded border border-slate-100">
-                                    <div>Income:</div>
-                                    <div className="text-right text-darkNavy font-bold">₹{msg.structuredResponse.calculations.income.toLocaleString()}</div>
-                                    <div>Expenses:</div>
-                                    <div className="text-right text-darkNavy font-bold">₹{msg.structuredResponse.calculations.totalExpenses.toLocaleString()}</div>
-                                    <div>Active EMIs:</div>
-                                    <div className="text-right text-darkNavy font-bold">₹{msg.structuredResponse.calculations.totalEMIs.toLocaleString()}</div>
-                                    <div>Net Surplus:</div>
-                                    <div className="text-right text-primary font-black">₹{msg.structuredResponse.calculations.netSavings.toLocaleString()}</div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Advice Pills */}
-                          {msg.structuredResponse.structuredAdvice && msg.structuredResponse.structuredAdvice.length > 0 && (
-                            <div className="space-y-1 w-full">
-                              {msg.structuredResponse.structuredAdvice.map((adv, idx) => (
-                                <div
-                                  key={idx}
-                                  className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border flex items-start gap-1.5 leading-relaxed ${
-                                    adv.type === 'success'
-                                      ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
-                                      : adv.type === 'warning'
-                                      ? 'bg-amber-50 border-amber-100 text-amber-700'
-                                      : adv.type === 'danger'
-                                      ? 'bg-rose-50 border-rose-100 text-rose-700'
-                                      : 'bg-blue-50 border-blue-100 text-blue-700'
-                                  }`}
-                                >
-                                  <span className="flex-1">{adv.text}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  {aiTyping && (
-                    <div className="flex items-center gap-1 bg-slate-100 p-2.5 rounded-xl w-14 text-textMuted justify-center">
-                      <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0.2s]" />
-                      <span className="w-1.5 h-1.5 rounded-full bg-current animate-bounce [animation-delay:0.4s]" />
-                    </div>
-                  )}
-                  <div ref={chatBottomRef} />
-                </div>
-              </div>
-
-              <div>
-                {/* Suggestion Chips */}
-                <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar scroll-smooth">
-                  {suggestionChips.map((chip, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleSendSuggestion(chip)}
-                      className="px-2.5 py-1 bg-slate-50 border border-slate-200 hover:border-primary/20 hover:text-primary transition-all rounded-full whitespace-nowrap text-[9px] text-textMuted font-black uppercase shrink-0"
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Chat Input Form */}
-                <form onSubmit={handleSendChat} className="flex gap-2 border-t border-slate-100 pt-2 flex-shrink-0">
-                  <input
-                    type="text"
-                    placeholder="Ask Finance Fox AI..."
-                    value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold text-darkNavy"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!chatInput.trim() || aiTyping}
-                    className="bg-primary hover:bg-orange-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-                  >
-                    Ask
-                  </button>
-                </form>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Interactive Financial Calculators (Redesigned with dynamic inputs) */}
             <div className="bg-white p-5 rounded-2xl border border-borderLight shadow-sm flex flex-col h-[420px] justify-between">
               <div>
@@ -1194,11 +1011,7 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* Floating Action Button */}
-      <button onClick={() => navigate('/expenses')} className="fixed bottom-6 right-6 w-14 h-14 bg-darkNavy rounded-full shadow-lg flex items-center justify-center text-primary hover:scale-105 transition-transform z-40">
-        <span className="font-bold text-xl select-none">₹</span>
-        <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary rounded-full border-2 border-darkNavy"></div>
-      </button>
+      <AIAssistantDrawer />
     </div>
   );
 };

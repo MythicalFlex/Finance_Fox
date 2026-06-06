@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   List, Bell, Calculator, IndianRupee, TrendingUp, PiggyBank, Percent,
-  ChevronDown, AlertCircle, CheckCircle2, Palmtree, Home, FileText, Sparkles, PieChart
+  ChevronDown, AlertCircle, CheckCircle2, Palmtree, Home, FileText, PieChart
 } from 'lucide-react';
+import AIAssistantDrawer from '../components/AIAssistantDrawer';
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
   <button
@@ -746,7 +747,6 @@ const CalculatorsPage = () => {
               <SidebarItem dotColor="bg-gray-200" label="Overview" onClick={() => navigate('/dashboard')} icon={Home} />
               <SidebarItem dotColor="bg-gray-200" label="Expenses" onClick={() => navigate('/expenses')} icon={List} />
               <SidebarItem dotColor="bg-gray-200" label="Expense History" onClick={() => navigate('/expense-history')} icon={FileText} />
-              <SidebarItem dotColor="bg-gray-200" label="AI Assistant" onClick={() => navigate('/ai-assistant')} icon={Sparkles} />
               <SidebarItem dotColor="bg-gray-200" label="Budget" onClick={() => navigate('/budget')} icon={PieChart} />
               <SidebarItem dotColor="bg-gray-200" label="Stocks" onClick={() => navigate('/stocks')} icon={TrendingUp} />
             </div>
@@ -813,6 +813,7 @@ const CalculatorsPage = () => {
           </div>
         </div>
       </main>
+      <AIAssistantDrawer />
     </div>
   );
 };

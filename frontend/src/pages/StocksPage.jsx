@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import {
   List, Bell, IndianRupee, ChevronDown, Plus, Trash2, RefreshCw,
   AlertCircle, CheckCircle2, TrendingUp, LineChart, Briefcase, Scale, Layers, Clock,
-  Home, FileText, Sparkles, PieChart, Calculator
+  Home, FileText, PieChart, Calculator
 } from 'lucide-react';
+import AIAssistantDrawer from '../components/AIAssistantDrawer';
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
   <button
@@ -682,7 +683,6 @@ const StocksPage = () => {
               <SidebarItem dotColor="bg-gray-200" label="Overview" onClick={() => navigate('/dashboard')} icon={Home} />
               <SidebarItem dotColor="bg-gray-200" label="Expenses" onClick={() => navigate('/expenses')} icon={List} />
               <SidebarItem dotColor="bg-gray-200" label="Expense History" onClick={() => navigate('/expense-history')} icon={FileText} />
-              <SidebarItem dotColor="bg-gray-200" label="AI Assistant" onClick={() => navigate('/ai-assistant')} icon={Sparkles} />
               <SidebarItem dotColor="bg-gray-200" label="Budget" onClick={() => navigate('/budget')} icon={PieChart} />
               <SidebarItem dotColor="bg-primary" label="Stocks" active onClick={() => navigate('/stocks')} icon={TrendingUp} />
             </div>
@@ -1358,6 +1358,9 @@ const StocksPage = () => {
           <span className="text-xs font-extrabold">{toast.message}</span>
         </div>
       )}
+
+      {/* Global AI Assistant Drawer */}
+      <AIAssistantDrawer />
     </div>
   );
 };

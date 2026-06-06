@@ -10,7 +10,6 @@ import {
   Search,
   Filter,
   TrendingUp,
-  Sparkles,
   ArrowLeft,
   CalendarDays,
   Home,
@@ -20,6 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AIAssistantDrawer from '../components/AIAssistantDrawer';
 
 const SidebarItem = ({ icon: Icon, label, active, dotColor, onClick }) => (
   <button 
@@ -395,7 +395,6 @@ const ExpenseHistoryPage = () => {
               <SidebarItem dotColor="bg-gray-200" label="Overview" onClick={() => navigate('/dashboard')} icon={Home} />
               <SidebarItem dotColor="bg-gray-200" label="Expenses" onClick={() => navigate('/expenses')} icon={List} />
               <SidebarItem dotColor="bg-primary" label="Expense History" active icon={FileText} />
-              <SidebarItem dotColor="bg-gray-200" label="AI Assistant" onClick={() => navigate('/ai-assistant')} icon={Sparkles} />
               <SidebarItem dotColor="bg-gray-200" label="Budget" onClick={() => navigate('/budget')} icon={PieChart} />
               <SidebarItem dotColor="bg-gray-200" label="Stocks" onClick={() => navigate('/stocks')} icon={TrendingUp} />
             </div>
@@ -897,6 +896,7 @@ const ExpenseHistoryPage = () => {
 
         </div>
       </main>
+      <AIAssistantDrawer />
     </div>
   );
 };
