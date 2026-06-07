@@ -17,6 +17,7 @@ const User = require("./models/Users");
 const Template = require("./models/Templates");
 const Expense = require("./models/Expenses");
 const EMI = require("./models/EMIs");
+const Stock = require("./models/Stocks");
 const jwt = require("jsonwebtoken");
 dotenv.config();
 const app = express();
@@ -89,12 +90,7 @@ app.get("/api/dashboard", (req, res) => {
     ],
   });
 });
-// Templates physical persistence setup
-const TEMPLATES_DIR = path.join(__dirname, "templates");
-// Ensure templates folder exists
-if (!fs.existsSync(TEMPLATES_DIR)) {
-  fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
-}
+// Templates local folder creation removed (using database instead)
 // Auth middleware to authenticate user token
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -141,7 +137,7 @@ app.post("/api/templates", authenticateToken, async (req, res) => {
         income: templateData.income,
         categories: templateData.categories
       },
-      { new: true, upsert: true }
+      { returnDocument: "after", upsert: true }
     );
 
     res.status(201).json({ message: "Template saved successfully", template });
@@ -199,7 +195,7 @@ app.post("/api/emis", authenticateToken, async (req, res) => {
         paidTenure: Number(emiData.paidTenure),
         lastPaidDate: emiData.lastPaidDate
       },
-      { new: true, upsert: true }
+      { returnDocument: "after", upsert: true }
     );
 
     res.status(201).json({ message: "EMI saved successfully", emi });
@@ -257,7 +253,7 @@ app.post("/api/expenses", authenticateToken, async (req, res) => {
         stockSymbol: expenseData.stockSymbol,
         date: expenseData.date ? new Date(expenseData.date) : new Date()
       },
-      { new: true, upsert: true }
+      { returnDocument: "after", upsert: true }
     );
 
     res.status(201).json({ message: "Expense saved successfully", expense });
@@ -334,127 +330,47 @@ app.delete("/api/expenses/template/:templateId", authenticateToken, async (req, 
   }
 });
 
-// Stocks subfolder setup
-const STOCKS_DIR = path.join(TEMPLATES_DIR, "stocks");
-// Ensure Stocks folder exists
-if (!fs.existsSync(STOCKS_DIR)) {
-  fs.mkdirSync(STOCKS_DIR, { recursive: true });
-}
 // GET stocks for a template
-app.get("/api/stocks/:templateId", (req, res) => {
+app.get("/api/stocks/:templateId", async (req, res) => {
   try {
     const { templateId } = req.params;
-    const fileName = `stocks-${templateId}.json`;
-    const filePath = path.join(STOCKS_DIR, fileName);
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, "utf8");
-      res.json(JSON.parse(data));
-    } else {
-      res.json([]);
-    }
+    const stocks = await Stock.find({ templateId: Number(templateId) });
+    res.json(stocks);
   } catch (error) {
     console.error("Error reading stocks for template:", error);
     res.status(500).json({ error: "Failed to read stocks" });
   }
 });
+
 // POST save stocks for a template
-app.post("/api/stocks/:templateId", (req, res) => {
+app.post("/api/stocks/:templateId", async (req, res) => {
   try {
     const { templateId } = req.params;
     const stocksList = req.body;
     if (!Array.isArray(stocksList)) {
       return res.status(400).json({ error: "Invalid stocks data" });
     }
-    const fileName = `stocks-${templateId}.json`;
-    const filePath = path.join(STOCKS_DIR, fileName);
-    fs.writeFileSync(filePath, JSON.stringify(stocksList, null, 2), "utf8");
+
+    // Delete existing stocks for this template
+    await Stock.deleteMany({ templateId: Number(templateId) });
+
+    // Insert new stocks if any
+    if (stocksList.length > 0) {
+      const newStocks = stocksList.map((stock) => ({
+        templateId: Number(templateId),
+        symbol: stock.symbol,
+        name: stock.name,
+        price: Number(stock.price),
+        quantity: Number(stock.quantity),
+        sector: stock.sector
+      }));
+      await Stock.insertMany(newStocks);
+    }
+
     res.json({ message: "Stocks saved successfully", stocksList });
   } catch (error) {
     console.error("Error saving stocks for template:", error);
     res.status(500).json({ error: "Failed to save stocks" });
-  }
-});
-// EMIs subfolder setup
-const EMIS_DIR = path.join(TEMPLATES_DIR, "emis");
-// Ensure EMIs folder exists
-if (!fs.existsSync(EMIS_DIR)) {
-  fs.mkdirSync(EMIS_DIR, { recursive: true });
-}
-// Automated Migration from old emis.json
-const oldEmisPath = path.join(TEMPLATES_DIR, "emis.json");
-if (fs.existsSync(oldEmisPath)) {
-  try {
-    const data = fs.readFileSync(oldEmisPath, "utf8");
-    const oldEmis = JSON.parse(data);
-    if (Array.isArray(oldEmis)) {
-      oldEmis.forEach((emi) => {
-        if (emi && emi.id) {
-          const filePath = path.join(EMIS_DIR, `emi-${emi.id}.json`);
-          if (!fs.existsSync(filePath)) {
-            fs.writeFileSync(filePath, JSON.stringify(emi, null, 2), "utf8");
-          }
-        }
-      });
-    }
-    fs.unlinkSync(oldEmisPath);
-    console.log(
-      "Successfully migrated old emis.json to templates/emis/ folder",
-    );
-  } catch (err) {
-    console.error("Error migrating old emis.json:", err);
-  }
-}
-// GET all EMIs
-app.get("/api/emis", (req, res) => {
-  try {
-    if (!fs.existsSync(EMIS_DIR)) {
-      return res.json([]);
-    }
-    const files = fs.readdirSync(EMIS_DIR);
-    const emis = files
-      .filter((file) => file.endsWith(".json"))
-      .map((file) => {
-        const filePath = path.join(EMIS_DIR, file);
-        const data = fs.readFileSync(filePath, "utf8");
-        return JSON.parse(data);
-      });
-    res.json(emis);
-  } catch (error) {
-    console.error("Error reading EMIs:", error);
-    res.status(500).json({ error: "Failed to read EMIs" });
-  }
-});
-// POST save / update a single EMI in its own file
-app.post("/api/emis", (req, res) => {
-  try {
-    const emi = req.body;
-    if (!emi || !emi.id) {
-      return res.status(400).json({ error: "Invalid EMI data" });
-    }
-    const fileName = `emi-${emi.id}.json`;
-    const filePath = path.join(EMIS_DIR, fileName);
-    fs.writeFileSync(filePath, JSON.stringify(emi, null, 2), "utf8");
-    res.json({ message: "EMI saved successfully", emi });
-  } catch (error) {
-    console.error("Error saving EMI:", error);
-    res.status(500).json({ error: "Failed to save EMI" });
-  }
-});
-// DELETE a specific EMI file
-app.delete("/api/emis/:id", (req, res) => {
-  try {
-    const { id } = req.params;
-    const fileName = `emi-${id}.json`;
-    const filePath = path.join(EMIS_DIR, fileName);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      res.json({ message: "EMI deleted successfully" });
-    } else {
-      res.status(404).json({ error: "EMI file not found" });
-    }
-  } catch (error) {
-    console.error("Error deleting EMI:", error);
-    res.status(500).json({ error: "Failed to delete EMI" });
   }
 });
 // POST signup - register a new user

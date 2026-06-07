@@ -377,7 +377,7 @@ const ExpenseHistoryPage = () => {
   const categoryDistribution = getCategorySpendings();
 
   return (
-    <div className="min-h-screen bg-background flex text-textDark font-sans">
+    <div className="h-screen overflow-hidden bg-background flex text-textDark font-sans">
       {/* Sidebar */}
       <aside className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-white border-r border-borderLight flex flex-col z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="flex items-center gap-3 px-6 py-6 border-b border-borderLight h-16 box-border cursor-pointer" onClick={() => navigate('/dashboard')}>
@@ -411,9 +411,9 @@ const ExpenseHistoryPage = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-borderLight flex items-center justify-between px-6 sticky top-0 z-20">
+        <header className="h-16 bg-white border-b border-borderLight flex items-center justify-between px-6 shrink-0 z-20">
           <div className="flex items-center gap-4">
             <button className="md:hidden text-textMuted" onClick={() => setSidebarOpen(!sidebarOpen)}>
               <List size={24} />
@@ -445,7 +445,7 @@ const ExpenseHistoryPage = () => {
                   >
                     <span>Profile Settings</span>
                   </button>
-                  <div className="mx-3 my-1 border-t border-gray-100" />
+                  <div className="mx-3 my-1 border-t border-gray-150" />
                   <button
                     className="w-full text-left px-4 py-2.5 text-xs font-semibold text-primary hover:bg-orange-50 transition-colors flex items-center gap-2"
                     onClick={handleSignOut}
@@ -458,7 +458,8 @@ const ExpenseHistoryPage = () => {
           </div>
         </header>
 
-        <div className="p-6 md:p-8 overflow-y-auto flex-1 w-full max-w-7xl mx-auto space-y-8">
+        <div className="flex-1 overflow-y-auto w-full">
+          <div className="p-6 md:p-8 max-w-7xl mx-auto w-full space-y-8">
           
           {/* Title & Top Action Bar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -892,9 +893,9 @@ const ExpenseHistoryPage = () => {
                 <RefreshCw size={24} className="animate-spin text-primary" />
               </div>
             )}
-          </div>
-
         </div>
+      </div>
+    </div>
       </main>
       <AIAssistantDrawer />
     </div>

@@ -293,7 +293,7 @@ const ExpensePage = () => {
   const budgetPercent = Math.min((totalExpenses / currentBudget) * 100, 100);
 
   return (
-    <div className="min-h-screen bg-background flex text-textDark font-sans">
+    <div className="h-screen overflow-hidden bg-background flex text-textDark font-sans">
       {/* Sidebar */}
       <aside className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-white border-r border-borderLight flex flex-col z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="flex items-center gap-3 px-6 py-6 border-b border-borderLight h-16 box-border cursor-pointer" onClick={() => navigate('/dashboard')}>
@@ -327,9 +327,9 @@ const ExpensePage = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-borderLight flex items-center justify-between px-6 sticky top-0 z-20">
+        <header className="h-16 bg-white border-b border-borderLight flex items-center justify-between px-6 shrink-0 z-20">
           <div className="flex items-center gap-4">
             <button className="md:hidden text-textMuted" onClick={() => setSidebarOpen(!sidebarOpen)}>
               <List size={24} />

@@ -25,7 +25,8 @@ import {
   AlertCircle,
   ArrowUpRight,
   Sparkles,
-  CheckCircle
+  CheckCircle,
+  Calendar
 } from 'lucide-react';
 
 const STOCKS_POOL = [
@@ -429,7 +430,7 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex text-textDark font-sans">
+    <div className="h-screen overflow-hidden bg-background flex text-textDark font-sans">
       {/* Sidebar */}
       <aside className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-white border-r border-borderLight flex flex-col z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="flex items-center gap-3 px-6 py-6 border-b border-borderLight h-16 box-border cursor-pointer" onClick={() => navigate('/dashboard')}>
@@ -463,9 +464,9 @@ const Dashboard = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-borderLight flex items-center justify-between px-6 sticky top-0 z-20">
+        <header className="h-16 bg-white border-b border-borderLight flex items-center justify-between px-6 shrink-0 z-20">
           <div className="flex items-center gap-4">
             <button className="md:hidden text-textMuted" onClick={() => setSidebarOpen(!sidebarOpen)}>
               <List size={24} />
@@ -518,27 +519,31 @@ const Dashboard = () => {
               </div>
             )}
 
-            <button className="hidden sm:flex px-4 py-1.5 rounded-full border border-borderLight text-xs font-medium text-textDark hover:bg-gray-50 items-center gap-2 tabular-nums">
+            <button className="px-4 py-1.5 rounded-full border border-borderLight text-sm font-medium text-textDark hover:bg-gray-50 flex items-center gap-2 tabular-nums">
+              <Calendar size={14} className="shrink-0" />
               <span>{now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</span>
               <span className="text-primary font-bold">{now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</span>
             </button>
             
             <div className="relative" ref={profileRef}>
               <button
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                onClick={(e) => { e.stopPropagation(); setProfileDropdownOpen(!profileDropdownOpen); }}
                 className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shadow-sm hover:bg-orange-600 transition-colors cursor-pointer"
               >
                 {userInitials}
               </button>
               {profileDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-borderLight rounded-xl shadow-xl py-1.5 z-50 animate-fadeIn">
+                <div
+                  className="absolute right-0 top-full mt-2 w-44 bg-white border border-borderLight rounded-xl shadow-xl py-1.5 z-50 animate-fadeIn"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
                     className="w-full text-left px-4 py-2.5 text-xs font-semibold text-darkNavy hover:bg-slate-50 transition-colors flex items-center gap-2"
-                    onClick={() => { setProfileDropdownOpen(false); navigate('/budget'); }}
+                    onClick={() => setProfileDropdownOpen(false)}
                   >
                     <span>Profile Settings</span>
                   </button>
-                  <div className="mx-3 my-1 border-t border-gray-100" />
+                  <div className="mx-3 my-1 border-t border-gray-155 border-gray-150" />
                   <button
                     className="w-full text-left px-4 py-2.5 text-xs font-semibold text-primary hover:bg-orange-50 transition-colors flex items-center gap-2"
                     onClick={handleSignOut}
@@ -551,7 +556,7 @@ const Dashboard = () => {
           </div>
         </header>
 
-        <div className="p-6 md:p-8 overflow-y-auto">
+        <div className="p-6 md:p-8 overflow-y-auto flex-1 w-full">
           {/* Welcome Section */}
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div>
