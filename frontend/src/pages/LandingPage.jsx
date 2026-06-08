@@ -1,9 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { ArrowRight, BarChart3, Shield, Zap, Lock, Sparkles, Target, PieChart, TrendingUp } from 'lucide-react';
+import { ArrowRight, BarChart3, Shield, Zap, Lock, Sparkles, Target, PieChart, TrendingUp, Calculator, Lightbulb } from 'lucide-react';
 
 const LandingPage = () => {
+  const [displayedLength, setDisplayedLength] = useState(0);
+  const [isTyping, setIsTyping] = useState(true);
+  const fullText = "Master Your Money With Intelligent Insights.";
+  const firstPartLength = 23;
+
+  useEffect(() => {
+    let timer;
+    const startTimeout = setTimeout(() => {
+      let index = 0;
+      timer = setInterval(() => {
+        index++;
+        setDisplayedLength(index);
+        if (index >= fullText.length) {
+          clearInterval(timer);
+          setTimeout(() => setIsTyping(false), 800);
+        }
+      }, 30);
+    }, 150);
+
+    return () => {
+      clearTimeout(startTimeout);
+      if (timer) clearInterval(timer);
+    };
+  }, []);
+
+  const displayedFirstPart = fullText.slice(0, Math.min(displayedLength, firstPartLength));
+  const displayedSecondPart = displayedLength > firstPartLength
+    ? fullText.slice(firstPartLength, displayedLength)
+    : "";
+
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#0B1120] text-white font-sans selection:bg-primary/30 selection:text-white">
       {/* Background Gradients & Glow Effects */}
@@ -30,7 +60,7 @@ const LandingPage = () => {
       {/* Main Hero Section */}
       <main className="flex-1 flex flex-col items-center z-10 w-full">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-24">
-          
+
           {/* Left Side Column */}
           <div className="lg:col-span-6 flex flex-col items-start text-left">
             {/* Small Badge */}
@@ -39,12 +69,20 @@ const LandingPage = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
               </span>
-              Trusted by modern investors
+              Designed for Modern Money Management
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl md:text-5xl lg:text-[72px] font-black tracking-tight leading-[1.05] mb-6 text-white">
-              Master Your Money With <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">Intelligent Insights.</span>
+            <h1 className="text-4xl md:text-5xl lg:text-[72px] font-black tracking-tight leading-[1.05] mb-6 text-white min-h-[3.15em] sm:min-h-[auto]">
+              {displayedFirstPart}
+              {displayedSecondPart && (
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-orange-400">
+                  {displayedSecondPart}
+                </span>
+              )}
+              {isTyping && (
+                <span className="inline-block w-[3px] h-[0.85em] ml-1 bg-primary animate-pulse align-middle" style={{ verticalAlign: 'middle', marginTop: '-0.15em' }}></span>
+              )}
             </h1>
 
             {/* Supporting Text */}
@@ -64,8 +102,8 @@ const LandingPage = () => {
             {/* Small Trust Indicators */}
             <div className="flex flex-wrap gap-6 items-center border-t border-slate-800/60 pt-8 w-full text-xs text-textMuted font-bold uppercase tracking-wider">
               <div className="flex items-center gap-2 hover:text-white transition-colors duration-200 cursor-default">
-                <Lock size={14} className="text-primary" />
-                <span>Bank-level Security</span>
+                <Lightbulb size={14} className="text-primary" />
+                <span>Smart Expense Tracking</span>
               </div>
               <div className="flex items-center gap-2 hover:text-white transition-colors duration-200 cursor-default">
                 <TrendingUp size={14} className="text-primary" />
@@ -85,7 +123,7 @@ const LandingPage = () => {
 
             {/* Main Glassmorphic Dashboard Panel */}
             <div className="w-full max-w-[540px] bg-[#0B132B]/60 backdrop-blur-xl border border-slate-850 rounded-[32px] p-6 shadow-2xl relative z-10 transition-all duration-300 hover:border-slate-700/80">
-              
+
               {/* Dashboard Top Header */}
               <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-800/60">
                 <div className="flex items-center gap-2.5">
@@ -121,7 +159,7 @@ const LandingPage = () => {
 
               {/* Chart & AI Score Row */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-5">
-                
+
                 {/* SVG Glowing Line Chart */}
                 <div className="md:col-span-8 bg-slate-900/40 border border-slate-800/50 p-4 rounded-2xl flex flex-col justify-between hover:bg-slate-900/60 transition-colors">
                   <div className="flex justify-between items-center mb-1">
@@ -136,7 +174,7 @@ const LandingPage = () => {
                           <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
                         </linearGradient>
                         <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="2" stdDeviation="3.5" floodColor="#f97316" floodOpacity="0.6"/>
+                          <feDropShadow dx="0" dy="2" stdDeviation="3.5" floodColor="#f97316" floodOpacity="0.6" />
                         </filter>
                       </defs>
                       {/* Gradient Area under Chart */}
@@ -171,7 +209,7 @@ const LandingPage = () => {
 
               {/* Bottom Row (Cash Flow/Budget & Transactions) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 {/* Cash Flow & Budget */}
                 <div className="flex flex-col gap-4">
                   {/* Cash Flow split card */}
@@ -251,7 +289,7 @@ const LandingPage = () => {
               Intelligent Features for Smart Capital
             </h2>
             <p className="text-textMuted text-base md:text-[18px] max-w-2xl mx-auto">
-              Empower your financial journey with institutional-grade tools rendered simple.
+              Smarter Insights. Better Decisions. Stronger Finances.
             </p>
           </div>
 
@@ -262,7 +300,7 @@ const LandingPage = () => {
               { icon: TrendingUp, title: "Investment Insights", desc: "Monitor portfolio performance with real-time analytics." },
               { icon: PieChart, title: "Budget Planning", desc: "Create monthly budgets and track progress." },
               { icon: Target, title: "Goal Tracking", desc: "Track savings goals with milestone indicators." },
-              { icon: Lock, title: "Secure Data Protection", desc: "Bank-grade encryption and secure authentication." }
+              { icon: Calculator, title: "Calculations Done Easy", desc: "Powerful financial calculators designed for everyday use." }
             ].map((feature, i) => (
               <div key={i} className="p-6 rounded-3xl bg-slate-900/30 backdrop-blur-md border border-slate-800/80 hover:border-primary/50 hover:-translate-y-1 transition-all duration-300 shadow-xl hover:shadow-primary/5 group">
                 <div className="w-12 h-12 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
